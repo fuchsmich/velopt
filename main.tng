@@ -6,8 +6,38 @@ beam system for shear analogy method
 function beam(l, a)
   struct=fem.Structure("frame")
 --   Knoten generieren in Schleife, Unterteilung, erweiterbares Array?
+  
+  --distance between first nodes (check if distance is big enough or at least bigger than 0)
+  local dx=(l % a)/2
+--   number of nodes 
+  local n=math.floor(l/a)
   nodes = tmath.Matrix({
+    {100, 0, 0, 0},
+    {200, 0, 0, -a},
   })
+  struct:AddNodes(nodes)
+
+  local x = dx
+  local nnr = 1
+  
+  -- rest of nodes with distance a
+  while x < l do
+    nodes = tmath.Matrix({
+      {100+nnr, x, 0, 0},
+      {200+nnr, x, 0, -a},
+    })
+    struct:AddNodes(nodes)
+    x = x + a
+    nnr = nnr + 1
+  end
+--   nodes at the end of the beams
+  nodes = tmath.Matrix({
+    {100+nnr, x-a+dx, 0, 0},
+    {200+nnr, x-a+dx, 0, -a},
+  })
+  struct:AddNodes(nodes)
+
+  
 end
 
 --[[
