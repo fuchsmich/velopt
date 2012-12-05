@@ -4,9 +4,9 @@ beam system for shear analogy method
 --]]
 
 function createStructure(l, a)
-  struct=fem.Structure("frame")
---   Knoten generieren in Schleife, Unterteilung, erweiterbares Array?
---   reference point?
+  struct=fem.Structure("shearanalogybeam")
+
+  --   reference point?
   --distance between first nodes (check if distance is big enough or at least bigger than 0)
   local dx=(l % a)/2
 --   number of nodes 
@@ -14,37 +14,56 @@ function createStructure(l, a)
   nodes = tmath.Matrix({
     {100, 0, 0, 0},
     {200, 0, 0, -a},
+    {300, l+a, 0, 0}  --reference node
   })
-  struct:AddNodes(nodes)
 
   local x = dx
   local nnr = 1
-  
+  local c = tmath.Matrix(1,7)
   -- rest of nodes with distance a
+  elements_a = tmath.Matrix(1,4)
+  elements_b = tmath.Matrix(1,4)
   while x < l do
     nodes = tmath.Matrix({
+      nodes,
       {100+nnr, x, 0, 0},
-      {200+nnr, x, 0, -a},
+      {200+nnr, x, 0, -a}
     })
-    struct:AddNodes(nodes)
+--     connect nodes with constraint w_a = w_b
+    c=tmath.Matrix({ c,
+		    {2, 100+nnr, 2, 1, 200+nnr, 2, 1}});
+    elements_a = tmath.Matrix({elements_a,
+			    {199+nnr, 199+nnr, 200+nnr, 300}
+			    }) 
+    elements_b = tmath.Matrix({elements_b,
+			    {99+nnr, 99+nnr, 100+nnr, 300}
+			    }) 
     x = x + a
     nnr = nnr + 1
   end
 --   nodes at the end of the beams
   nodes = tmath.Matrix({
+    nodes,
     {100+nnr, x-a+dx, 0, 0},
     {200+nnr, x-a+dx, 0, -a},
   })
+  elements_a = tmath.Matrix({elements_a,
+			  {199+nnr, 199+nnr, 200+nnr, 300}
+			  }) 
+  elements_b = tmath.Matrix({elements_b,
+			  {99+nnr, 99+nnr, 100+nnr, 300}
+			  }) 
   struct:AddNodes(nodes)
+  struct:AddConstraints(c);
 
 --   define supports
   struct:GetNode(100):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
   struct:GetNode(200):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
   struct:GetNode(100+nnr):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
   struct:GetNode(200+nnr):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
-
---kopplung der stäbe mit addconstraints siehe contraints.tng
 end
+
+
 
 function createSections(a, h, E, G)
 --  Erweiterung für beliebig viele Schichten
@@ -81,23 +100,28 @@ function createSections(a, h, E, G)
   --   Ersatz shear stiffness of beam b
   GA_b=a^2/ga_b
   
-
+  local h_ab=a/2
+  local A_ab=h_ab
+  local I_ab=h_ab^3/12
   for i=0,2 do
     local ss = struct:AddSection(i+1, "RECT", 0)
-    ss:SetData(tmath.Matrix({{1, 1}}))   --choose smaller section for later drawing??
+    ss:SetData(tmath.Matrix({{h_ab, 1}}))
   end
 
 --   	double G = E/2/(1+nu);
 --   nu = 1/2*E/G - 1
-  struct:AddMaterial(1, "LINEAR_ELASTIC", tmath.Matrix({{EI_a, 1/2*EI_a/GA_a-1, 1000}}))
-  struct:AddMaterial(2, "LINEAR_ELASTIC", tmath.Matrix({{EI_b, 1/2*EI_b/GA_b-1, 1000}}))
---   Connectors, how to determinate constants?
-  struct:AddMaterial(3, "LINEAR_ELASTIC", tmath.Matrix({{1e20, .1, 0}})) 
+  local E_a=EI_a/I_ab
+  local G_a=GA_a/A_ab
+  struct:AddMaterial(1, "LINEAR_ELASTIC", tmath.Matrix({{E_a, 1/2*E_a/G_a-1, 1000}}))
+  local E_b=EI_b/I_ab
+  local G_b=GA_b/A_ab
+  struct:AddMaterial(2, "LINEAR_ELASTIC", tmath.Matrix({{E_b, 1/2*E_b/G_b-1, 1000}}))
+
   
 -- add elements, first create Matrices with [number, start, end, reference point]
-  for i=0,2 do --???
-    struct:AddElements("RECT", 1, 1, tmath.Matrix({{100+i, 100+i, 101+i, 300}}))
-  end
+  struct:AddElements("RECT", 1, 1, elements_a)
+  struct:AddElements("RECT", 2, 2, elements_b)
+
 end
 
 
