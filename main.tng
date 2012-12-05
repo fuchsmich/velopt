@@ -43,6 +43,7 @@ function createStructure(l, a)
   struct:GetNode(100+nnr):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
   struct:GetNode(200+nnr):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
 
+--kopplung der stäbe mit addconstraints siehe contraints.tng
 end
 
 function createSections(a, h, E, G)
