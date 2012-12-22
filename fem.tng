@@ -36,11 +36,11 @@ function createStructure(h, l, moe, mos)
     }))
 --     connect nodes with constraint w_a = w_b
     if nnr == 1 then
-      c=tmath.Matrix({{2, 100+nnr, 2, 1, 200+nnr, 2, 1}})
+      c=tmath.Matrix({{2, 100+nnr, 1, 1, 200+nnr, 1, 1}})
       elements_a = tmath.Matrix({{1999+nnr, 199+nnr, 200+nnr, 300}}) 
       elements_b = tmath.Matrix({{2999+nnr, 99+nnr, 100+nnr, 300}})
     else
-      c=c:AppendRows(tmath.Matrix({{2, 100+nnr, 2, 1, 200+nnr, 2, 1}}))
+      c=c:AppendRows(tmath.Matrix({{2, 100+nnr, 1, 1, 200+nnr, 1, 1}}))
       elements_a = elements_a:AppendRows(tmath.Matrix({{1999+nnr, 199+nnr, 200+nnr, 300}})) 
       elements_b = elements_b:AppendRows(tmath.Matrix({{2999+nnr, 99+nnr, 100+nnr, 300}}))
     end
@@ -56,9 +56,9 @@ function createStructure(h, l, moe, mos)
   }))
     elements_a = elements_a:AppendRows(tmath.Matrix({{199+nnr, 199+nnr, 200+nnr, 300}}))
     elements_b = elements_b:AppendRows(tmath.Matrix({{99+nnr, 99+nnr, 100+nnr, 300}}))
-  print(elements_a)
+--   print(elements_a)
   struct:AddNodes(nodes)
---   print(c)
+  print(c)
   struct:AddConstraints(c)
 
 --   define supports
@@ -79,7 +79,7 @@ function createStructure(h, l, moe, mos)
     h_above=h_above+h[i]
     -- bending stiffness of beam a
     EI_a=EI_a + moe[i]*h[i]^2/12 
-    -- shear stiffness of beam b
+    -- shear stiffness of beam a
     GA_a=GA_a + mos[i]*h[i]
     -- bending stiffness of beam b (Steineranteile)
     EI_b=EI_b + moe[i]*h[i]*z^2
@@ -107,12 +107,16 @@ function createStructure(h, l, moe, mos)
 --   nu = 1/2*E/G - 1
   local moe_a=EI_a/I_ab
   local mos_a=GA_a/A_ab --could also be totally stiff
-  local mm = struct:AddMaterial(1,"LINEAR_ELASTIC")
-  mm.SetData(tmath.Matrix({{moe_a, 1/2*moe_a/mos_a-1, 1000}}))
+  local nu_a=1/2*moe_a/mos_a-1
+   mm = struct:AddMaterial(1,"LINEAR_ELASTIC")
+   mm:SetData(tmath.Matrix({{2.1e11, .3, 7850}}))
+--   mm.SetData(tmath.Matrix({{moe_a, nu_a, 1000}}))
   local moe_b=EI_b/I_ab
   local mos_b=GA_b/A_ab
-  struct:AddMaterial(2,"LINEAR_ELASTIC")
-  mm.SetData(tmath.Matrix({{moe_b, 1/2*mos_b/G_b-1, 1000}}))
+  local nu_b=1/2*moe_b/mos_b-1
+  mm = struct:AddMaterial(2,"LINEAR_ELASTIC")
+  mm:SetData(tmath.Matrix({{2.1e11, .3, 7850}}))
+--   mm.SetData(tmath.Matrix({{moe_b, nu_b, 1000}}))
 
   
 -- add elements, first create Matrices with [number, start, end, reference point]
