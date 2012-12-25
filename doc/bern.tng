@@ -1,0 +1,35 @@
+ 	struct=fem.Structure("frame")
+-- Create nodes
+	nodes = tmath.Matrix({
+		{11, 0, 0, 0},
+		{12, 1, 0, 0},
+		{16, 0, 1, 0}
+	})
+	struct:AddNodes(nodes)
+
+-- Define support conditions and fix reference node 16
+	struct:GetNode(11):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
+	struct:GetNode(16):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
+	
+	ss = struct:AddSection(1, "RECT", 0)
+	    x=0.5
+	    ss:SetData(tmath.Matrix({{x, x}}))
+	    
+    mm = struct:AddMaterial(8, "LINEAR_ELASTIC")
+	mm:SetData(tmath.Matrix({{2.1e11, .3, 7850}}))
+--define elements	
+	struct:AddElements("RECT", 8, 1, tmath.Matrix({{1, 11, 12, 16}}))
+	
+-- assemble stiffness matrix and load vector
+	local nd=struct:GlobalDof()
+	local K=struct:SparseStiffness()
+	kk=K:Expand()
+	print("kk", kk)
+	local F1=struct:GetAllDisplacements()
+	F1[{1,1}] = 1e5
+	local F=struct:ToDofDisplacements(F1)
+-- solve for displacements
+	U=K:Solve(F)
+	U1=struct:ToAllDisplacements(U)
+	u=U1[{1,1}]
+	print("u", u)
