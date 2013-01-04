@@ -18,6 +18,7 @@ function createStructure(h, l, moe, mos)
   local dx=(l % a)/2
 --   number of nodes 
   local non=math.floor(l/a)
+
   local nodes = tmath.Matrix({
     {1, l+a, 0, 0},  --reference node
     {1000, 0, 0, 0},
