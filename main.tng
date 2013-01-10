@@ -1,1 +1,50 @@
- 
+--[[
+beam system for shear analogy method
+group velopt
+--]]
+
+-- include fem.tng file
+dofile("fem.tng")
+
+density = tmath.Matrix({{2400,750,470}}) --densities [kg/m³] {concrete,velox,wood)
+
+-- This function defines the objective
+	function objective (x)
+		local weight=(density[1]*x[0]+2*density[2]*x[1]) -- density of complete beam (price of wood is two times price of velox per weight)
+		return weight
+		end
+
+-- This function defines the constraints. Note that it returns an array		
+	function constraints (x)
+		local const=tmath.Matrix({{x[0]+x[1]+0.06-0.33},{middledeflection-l/400}}) -- constraints for geometry and maximum deflection
+		return const
+		end
+
+-- The optimization algorithm is CONMIN by G. Vanderplaats
+	nvariables = 2; nconstraints = 2
+	ops=optimize.Conmin(nvariables, nconstraints)
+	start=tmath.Matrix({{0.1},{0.1}}); -- starting point: 10cm for velox, 10 cm for wood and 6cm concrete (fixed)
+	ops:SetDesign(start)
+	
+-- Run optimization in reverse communication mode
+-- This is an endless loop which is terminated when
+-- the value "go_on" returned from Compute is equal to zero
+	go_on=1
+	while(1) do
+-- Compute one step and check for termination
+		go_on=ops:Compute()
+		if (go_on==0) then break end
+
+-- Compute objective
+		x = ops:GetDesign()
+		obj=objective(x)
+		ops:SetObjective(obj);
+
+-- Compute constraints		
+		cons = constraints(x)
+		ops:SetConstraints(cons)
+		end
+
+-- Print optimization result
+	sol = ops:GetDesign()
+	print("sol", sol)
