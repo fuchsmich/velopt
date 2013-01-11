@@ -2,33 +2,60 @@
 beam system for shear analogy method
 (c) 2012 Michael Fuchs michfu@gmx.at
 --]]
+function deflection(h, l, moe, mos)
+  -- TODO solve FEM-system, get u
+  return u
+end
 
 function createStructure(h, l, moe, mos)
-  struct=fem.Structure("shearanalogy")
+-- TODO create node in the middle
 
-  local h_tot=0
-  local EI_a = 0
-  local EI_b = 0
-  local GA_a = 0
-  for i=0,2 do
+  struct=fem.Structure("shear analogy")
+  local h_tot = 0
+  
+  for i = 0,2 do
     h_tot = h_tot + h[i]
   end
-  local a=h[0]/2 + h[1] + h[2]/2
+--   print("h_tot", h_tot)
+  
+  local a = h[0]/2 + h[1] + h[2]/2
+--   print("a", a)
   --distance between first nodes (TODO: check if distance is big enough or at least bigger than 0)
-  local dx=(l % a)/2
+  local dx = (l % a)/2
+  if dx < (a/100000) then
+    dx = a
+  end
+  print("dx", dx)
 --   number of nodes 
-  local non=math.floor(l/a)
-
-  local nodes = tmath.Matrix({
-    {1, l+a, 0, 0},  --reference node
+--   local non = math.floor(l/a) + 1
+--   print("Number of Nodes", non)
+  
+  local refnode = tmath.Matrix({{1, 0, 1, 0}})
+  local nodes_a = tmath.Matrix({
     {1000, 0, 0, 0},
-    {1001, dx, 0, 0},
+    {1001, 0, 0, 0},
+    {1002, 0, 0, 0},
+    {1003, dx, 0, 0}
+  })
+  local nodes_b = tmath.Matrix({
     {2000, 0, -a, 0},
     {2001, dx, -a, 0}
   })
-  local elements_a = tmath.Matrix({{1500, 1000, 1001, 1}}) 
+  
+--   local elements_a = tmath.Matrix({{1500, 1000, 1001, 1}}) 
   local elements_b = tmath.Matrix({{2500, 2000, 2001, 1}})
-  local c=tmath.Matrix({{2, 1001, 1, -1, 2001, 1, 1}})
+  local c = tmath.Matrix({{2, 1001, 1, -1, 2001, 1, 1}})
+
+  local elements_a = tmath.Matrix({
+				  {1500, 1000, 1001, 1},
+				  {1501, 1001, 1002, 1},
+				  {1502, 1002, 1003, 1}
+  }) 
+  local elements_b = tmath.Matrix({
+				  {2500, 1000, 1001, 1},
+				  {2501, 1001, 1002, 1},
+				  {2502, 1002, 1003, 1}
+  }) 
 
   local x = dx
   local nnr = 1
@@ -38,11 +65,13 @@ function createStructure(h, l, moe, mos)
     x = x + a
     if x > l then
       x = x - a + dx
-      i = 2
+      i = 2 -- exit loop
     end
     nnr = nnr + 1
-    nodes = nodes:AppendRows(tmath.Matrix({
-      {1000+nnr, x, 0, 0},
+    nodes_a = nodes_a:AppendRows(tmath.Matrix({
+      {1000+nnr, x, 0, 0}
+    }))
+    nodes_b = nodes_b:AppendRows(tmath.Matrix({
       {2000+nnr, x, -a, 0}
     }))
 
@@ -52,10 +81,14 @@ function createStructure(h, l, moe, mos)
     c=c:AppendRows(tmath.Matrix({{2, 1000+nnr, 1, -1, 2000+nnr, 1, 1}}))
   end
  
-  struct:AddNodes(nodes)
+  print("Nodes", nodes_a, nodes_b)
+  struct:AddNodes(refnode)
+  struct:AddNodes(nodes_a)
+  struct:AddNodes(nodes_b)
 
---   define supports
+--   fix reference node
   struct:GetNode(1):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
+--   define supports
   struct:GetNode(1000):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
   struct:GetNode(2000):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
   struct:GetNode(1000+nnr):SetAvailDof(tmath.Matrix({{1, 0, 0, 0, 0, 1}}))
@@ -64,6 +97,7 @@ function createStructure(h, l, moe, mos)
   local EA_a=0
   local GA_a=0
   local EI_a=0
+  local EI_b=0
 
   local ga_b=0 --temporary value for GA_b
   local h_above=0
@@ -89,37 +123,57 @@ function createStructure(h, l, moe, mos)
   end
 
   --   Ersatz shear stiffness of beam b
-  GA_b=a^2/ga_b
+  local GA_b=a^2/ga_b
 
---set material with refernce stiffness
+--define parameters material with refernce stiffness
   local E_cal = 1e6 -- [MN/m²]
-  local nu_cal = .2
+  local nu_cal = 0.2
   local G_cal = E_cal/2/(1+nu_cal)
-  mm = struct:AddMaterial(1,"LINEAR_ELASTIC")
-  local matProp = tmath.Matrix({{E_cal, nu_cal, 3850}})
-  print("MatProp", matProp)
-  mm:SetData(matProp)
 
+--add section for beam a
+  local ss = struct:AddSection(11, "BEAM3D", 0)
   local A = EA_a/E_cal
   local A_y = GA_a/G_cal
   local A_z = A_y
   local I_z = EI_a/E_cal
   local I_y = I_z
   local I_x = I_y*2
-  local ss = struct:AddSection(1, "BEAM3D", 0)
   local secProp = tmath.Matrix({{A, A_y, A_z, I_x, I_y, I_z}})
   print("secPropA", secProp)
   ss:SetData(secProp)
   
-  A = .0001*A
+--add section for beam b
+  ss = struct:AddSection(12, "BEAM3D", 0)
+  A = 0.0001*A
   A_y = GA_b/G_cal
   A_z = A_y
   I_z = EI_b/E_cal
   I_y = I_z
   I_x = I_y*2
-  ss = struct:AddSection(2, "BEAM3D", 0)
-  ss:SetData(tmath.Matrix({{A, A_y, A_z, I_x, I_y, I_z}}))
-  
+  secProp = tmath.Matrix({{A, A_y, A_z, I_x, I_y, I_z}})
+  print("secPropB", secProp)
+  ss:SetData(secProp)
+
+  -- Testsection
+  ss = struct:AddSection(13, "BEAM3D", 0)
+  x=0.05       -- Quadratic cross section width/height
+  A = x^2     -- Cross section area (used for axial stiffness)
+  Ay = A*2/3  -- Shear area (used for shear stiffness in y-direction)
+  Az = A*2/3
+  Ix = x^4/6  -- Polar moment of inertial (used for torsion)
+  Iy = Ix/2   -- Cross section moment of inertia about y-Axis (used for bending about y-Axis)
+  Iz = Ix/2
+  ss:SetData(tmath.Matrix({{A, Ay, Az, Ix, Iy, Iz}}))
+
+-- add materials 
+  local mm = struct:AddMaterial(1,"LINEAR_ELASTIC")
+  local matProp = tmath.Matrix({{E_cal, nu_cal, 3850}})
+  print("MatProp", matProp)
+  mm:SetData(matProp)
+
+-- material for testing
+  mm = struct:AddMaterial(2, "LINEAR_ELASTIC")
+  mm:SetData(tmath.Matrix({{2.1e11, .3, 7850}}))
   
 --   	double G = E/2/(1+nu);
 --   nu = 1/2*E/G - 1
@@ -138,8 +192,9 @@ function createStructure(h, l, moe, mos)
 
   
 -- add elements, first create Matrices with [number, start, end, reference point]
-  struct:AddElements("BEAM3D", 1, 1, elements_a)
-  struct:AddElements("BEAM3D", 1, 2, elements_b)
+  print("Elements A", elements_a)
+  struct:AddElements("BEAM3D", 2, 13, elements_a)
+  struct:AddElements("BEAM3D", 2, 13, elements_b)
   
 -- Find global DOFs and assemble stiffness
   local nd=struct:GlobalDof()
@@ -149,12 +204,17 @@ end
 
 
 -- main starts here
-l = 7.2 -- length of beam [m]
+-- l = 3 -- length of beam [m]
 -- a = 11.8/2 + 15 + 6/2
-h = tmath.Matrix({{0.06, 0.15, 0.118}}) -- thickness of part sections (top down) [m]
-moe = tmath.Matrix({{19560, 1000, 10000}}) -- MoE [MN/m²]
-mos = tmath.Matrix({{moe[1]/2/(1+0.2), 15, 960}}) --MoS [MN/m²]
-createStructure(h, l, moe, mos)
+-- h = tmath.Matrix({{0.06, 0.15, 0.118}}) -- thickness of part sections (top down) [m]
+-- moe = tmath.Matrix({{19560, 1000, 10000}}) -- MoE [MN/m²]
+-- mos = tmath.Matrix({{moe[1]/2/(1+0.2), 15, 960}}) --MoS [MN/m²]
+
+-- h = tmath.Matrix({{0.1, 0.1, 0.1}}) -- thickness of part sections (top down) [m]
+-- moe = tmath.Matrix({{20000, 20000, 20000}}) -- MoE [MN/m²]
+-- mos = tmath.Matrix({{1000, 1000, 1000}}) --MoS [MN/m²]
+
+-- createStructure(h, l, moe, mos)
 -- ww = graphics.Visualize(.05, .05, .6, .6, "Structure")
 -- ww:Lighting(true)
 -- ww:Perspective(true)

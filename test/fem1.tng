@@ -16,10 +16,10 @@ nodes = tmath.Matrix({
 struct:AddNodes(nodes)
 
 -- Define support conditions and fix reference node 16
-struct:GetNode(11):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
-struct:GetNode(13):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
-struct:GetNode(111):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
-struct:GetNode(113):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
+struct:GetNode(11):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
+struct:GetNode(13):SetAvailDof(tmath.Matrix({{1, 0, 0, 0, 0, 1}}))
+struct:GetNode(111):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
+struct:GetNode(113):SetAvailDof(tmath.Matrix({{1, 0, 0, 0, 0, 1}}))
 struct:GetNode(16):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
 
 
