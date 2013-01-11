@@ -1,9 +1,15 @@
 l_in = gui.NumberInputBox("Lenght", 1, 10, 2, "set_input_values")
 h_max_in = gui.NumberInputBox("Max Hight", .25, .8, .33, "set_input_values")
+costs1 = gui.NumberInputBox("Cost/Weight Concrete", 0, 10, 3, "set_input_values")
+costs2 = gui.NumberInputBox("Cost/Weight Velox", 0, 10, 1, "set_input_values")
+costs3 = gui.NumberInputBox("Cost/Weight Wood", 0, 10, 5, "set_input_values")
 
 function set_input_values()
     l = l_in:GetValue()
     h = h_max_in:GetValue()
+	costs_conc = costs1:GetValue()
+	costs_velo = costs2:GetValue()
+	costs_wood = costs3:GetValue()
 end
 
 timo=true
