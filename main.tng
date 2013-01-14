@@ -11,17 +11,16 @@ h = tmath.Matrix({{0.06, 0.05, 0.12}}) -- thickness of part sections (top down) 
 moe = tmath.Matrix({{1.956e10, 1e9, 1.16e10}}) -- MoE [N/m²]
 mos = tmath.Matrix({{moe[0]/2/(1+0.2), 1.5e7, 9.6e8}}) --MoS [N/m²]
 rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/m³]
-costs = tmath.Matrix({{58, 264, 1000}}) -- costs [€/m³]
+costs = tmath.Matrix({{58, 264, 1200}}) -- costs [€/m³]
 
 -- createStructure(h, l, moe, mos)
 
-
-h_max = l/20
+h_max = l/15
 -- This function defines the objective
 	function objective (x)
 	  h[1] = x[0]
 	  h[2] = x[1]
-	  local costs_tot=(rho[0]*h[0]*costs[0]+rho[1]*h[1]*costs[1]+rho[2]*h[2]*costs[2]) -- costs_tot [€]
+	  local costs_tot=(h[0]*costs[0]+h[1]*costs[1]+h[2]*costs[2]) -- costs_tot [€]
 	  return costs_tot
 	end
 
@@ -30,9 +29,9 @@ h_max = l/20
 	  h[1] = x[0]
 	  h[2] = x[1]
 	  u = createStructure(h, l, moe, mos)
-	  print("u", u)
-	  print("layers", h)
-	  local const=tmath.Matrix({{h[0]+h[1]+h[2]-h_max}, {u-l/250}, {.08-h[1]}, {.04-h[2]}}) -- constraints for geometry and maximum deflection
+	  -- print("u", u)
+	  -- print("layers", h)
+	  local const=tmath.Matrix({{h[0]+h[1]+h[2]-h_max}, {u-l/400}, {.08-h[1]}, {.04-h[2]}}) -- constraints for geometry and maximum deflection
 	  return const
 	end
 
@@ -63,7 +62,7 @@ h_max = l/20
 
 -- Print optimization result
 	sol = ops:GetDesign()
-	print("optimized solution for h[1] and h[2]", sol)
-	print("total hight", h[0]+h[1]+h[2])
+	print("h_Velox        h_Wood", sol:Transpose())
+	print("total hight", h[0]+sol[0]+sol[1])
 v=graphics.Visualize(30,30,1000,800, "Frame")
 v:Draw(struct, 1)
