@@ -1,19 +1,20 @@
-l_in = gui.NumberInputBox("Lenght", 1, 10, 2, "set_input_values")
-h_max_in = gui.NumberInputBox("Max Hight", .25, .8, .33, "set_input_values")
-costs1 = gui.NumberInputBox("Cost/Weight Concrete", 0, 10, 3, "set_input_values")
-costs2 = gui.NumberInputBox("Cost/Weight Velox", 0, 10, 1, "set_input_values")
-costs3 = gui.NumberInputBox("Cost/Weight Wood", 0, 10, 5, "set_input_values")
-
-function set_input_values()
-    l = l_in:GetValue()
-    h = h_max_in:GetValue()
-	costs_conc = costs1:GetValue()
-	costs_velo = costs2:GetValue()
-	costs_wood = costs3:GetValue()
-end
+-- l_in = gui.NumberInputBox("Lenght", 1, 10, 2, "set_input_values")
+-- h_max_in = gui.NumberInputBox("Max Hight", .25, .8, .33, "set_input_values")
+-- costs1 = gui.NumberInputBox("Cost/Weight Concrete", 0, 10, 3, "set_input_values")
+-- costs2 = gui.NumberInputBox("Cost/Weight Velox", 0, 10, 1, "set_input_values")
+-- costs3 = gui.NumberInputBox("Cost/Weight Wood", 0, 10, 5, "set_input_values")
+-- 
+-- function set_input_values()
+--     l = l_in:GetValue()
+--     h = h_max_in:GetValue()
+-- 	costs_conc = costs1:GetValue()
+-- 	costs_velo = costs2:GetValue()
+-- 	costs_wood = costs3:GetValue()
+-- end
 
 timo=true
 a=l/4
+l=3
 
 struct=fem.Structure("frame")
 -- Create nodes
@@ -21,9 +22,9 @@ nodes = tmath.Matrix({
 	{11, 0, 0, 0},
 	{12, l/2, 0, 0},
 	{13, l, 0, 0},
-	{111, 0, a, 0},
-	{112, l/2, a, 0},
-	{113, l, a, 0},
+	{111, 0, 0, 0},
+	{112, l/2, 0, 0},
+	{113, l, 0, 0},
 	{16, 0, 1, 0}
 })
 struct:AddNodes(nodes)
@@ -39,7 +40,7 @@ struct:GetNode(16):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
 --define section(s)
 -- timoshenko beam
 ss = struct:AddSection(1, "BEAM3D", 0)
-x=0.05       -- Quadratic cross section width/height
+x=0.1       -- Quadratic cross section width/height
 A = x^2     -- Cross section area (used for axial stiffness)
 Ay = A*2/3  -- Shear area (used for shear stiffness in y-direction)
 Az = A*2/3
@@ -73,20 +74,24 @@ end
 -- assemble stiffness matrix and load vector
 local nd=struct:GlobalDof()
 -- constraints
-c1=tmath.Matrix({{2, 12, 0, -1, 112, 0, 1}})
+c1=tmath.Matrix({{2, 12, 0, -1, 112, 0, 1},
+		 {2, 12, 1, -1, 112, 1, 1},
+		 {2, 12, 2, -1, 112, 2, 1}
+		  })
 struct:AddConstraints(c1)
 
 local K=struct:SparseStiffness()
 kk=K:Expand()
 print("kk", kk)
 local F1=struct:GetAllDisplacements()
-F1[{1,1}] = 3e5
+F1[{1,1}] = -3e5
 local F=struct:ToDofDisplacements(F1)
 -- solve for displacements
 U=K:Solve(F)
 U1=struct:ToAllDisplacements(U)
 u=U1[{1,1}]
 print("u", u)
+struct:SetDofDisplacements(U) --(verformungen anbringen)
 
 v=graphics.Visualize(30,30,1000,800, "Frame")
 v:Draw(struct, 1)
