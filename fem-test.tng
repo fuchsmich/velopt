@@ -1,12 +1,13 @@
 --calls fem.tng for testing
 
-dofile("fem-simple.tng")
+dofile("fem.tng")
 
 -- main starts here
 l = 3 -- length of beam [m]
 h = tmath.Matrix({{0.1, 0.1, 0.1}}) -- thickness of part sections (top down) [m]
-moe = tmath.Matrix({{20000, 20000, 20000}}) -- MoE [MN/m²]
-mos = tmath.Matrix({{1000, 1000, 1000}}) --MoS [MN/m²]
+moe = tmath.Matrix({{20000, 20000, 20000}}) -- MoE [N/m²]
+mos = tmath.Matrix({{1000, 1000, 1000}}) --MoS [N/m²]
+rho = tmath.Matrix({{1000, 1000, 1000}}) --MoS [N/m³]
 
 createStructure(h, l, moe, mos)
 
