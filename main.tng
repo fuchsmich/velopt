@@ -21,6 +21,7 @@ h_max = l/20
 	  h[1] = x[0]
 	  h[2] = x[1]
 	  local costs_tot=(h[0]*costs[0]+h[1]*costs[1]+h[2]*costs[2]) -- costs_tot [€]
+	  
 	  return costs_tot
 	end
 
@@ -31,15 +32,15 @@ h_max = l/20
 	  u = createStructure(h, l, moe, mos)
 	  -- print("u", u)
 	  -- print("layers", h)
-	  u_zul = l/300
-	  local const=tmath.Matrix({{u-u_zul}, {.08-h[1]}, {.04-h[2]}}) -- constraints for geometry and maximum deflection
+	  u_zul = l/400
+	  local const=tmath.Matrix({{.08-h[1]}, {.02-h[2]}, {u+0.004-u_zul}}) -- constraints for geometry and maximum deflection
 	  return const
 	end
 
 -- The optimization algorithm is CONMIN by G. Vanderplaats
 	nvariables = 2; nconstraints = 3
 	ops=optimize.Conmin(nvariables, nconstraints)
-	start=tmath.Matrix({{0.081},{0.041}}); -- starting point: 10cm for velox, 10 cm for wood and 6cm concrete (fixed)
+	start=tmath.Matrix({{0.20},{0.10}}); -- starting point: 10cm for velox, 10 cm for wood and 6cm concrete (fixed)
 	ops:SetDesign(start)
 	
 -- Run optimization in reverse communication mode
@@ -72,7 +73,7 @@ h_max = l/20
 	-- print("h_zul", h_max)
 	print("u_zul", u_zul)
 	print("total hight", h[0]+sol[0]+sol[1])
-	print("max. u:", u_max) --, " @ l = ", (z-2)*dx)   
+	print("max. u:", createStructure(tmath.Matrix({{h[0],sol[0],sol[1]}}), l, moe, mos)) --, " @ l = ", (z-2)*dx)   
 	print("h_Velox        h_Wood", sol:Transpose())
 
 v=graphics.Visualize(30,30,1000,800, "Frame")
