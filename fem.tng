@@ -179,7 +179,7 @@ function createStructure(h, l, moe, mos)
 --   print("U1", U1)
   local u = U1:GetCols(1)*(-1)
   u_max, z ,s = u:MaxCoeff()
-  print("max. u:", u_max) --, " @ l = ", (z-2)*dx)   
+  -- print("max. u:", u_max) --, " @ l = ", (z-2)*dx)   
   -- local uo=-U1[{2+15,1}]
   -- local uu=-U1[{2+15+30,1}]
   -- print("uo", uo, "uu", uu)

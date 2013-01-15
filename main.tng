@@ -11,11 +11,11 @@ h = tmath.Matrix({{0.06, 0.05, 0.12}}) -- thickness of part sections (top down) 
 moe = tmath.Matrix({{1.956e10, 1e9, 1.16e10}}) -- MoE [N/m²]
 mos = tmath.Matrix({{moe[0]/2/(1+0.2), 1.5e7, 9.6e8}}) --MoS [N/m²]
 rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/m³]
-costs = tmath.Matrix({{58, 264, 1200}}) -- costs [€/m³]
+costs = tmath.Matrix({{58, 264, 570}}) -- costs [€/m³]
 
 -- createStructure(h, l, moe, mos)
 
-h_max = l/15
+h_max = l/20
 -- This function defines the objective
 	function objective (x)
 	  h[1] = x[0]
@@ -31,14 +31,15 @@ h_max = l/15
 	  u = createStructure(h, l, moe, mos)
 	  -- print("u", u)
 	  -- print("layers", h)
-	  local const=tmath.Matrix({{h[0]+h[1]+h[2]-h_max}, {u-l/400}, {.08-h[1]}, {.04-h[2]}}) -- constraints for geometry and maximum deflection
+	  u_zul = l/300
+	  local const=tmath.Matrix({{u-u_zul}, {.08-h[1]}, {.04-h[2]}}) -- constraints for geometry and maximum deflection
 	  return const
 	end
 
 -- The optimization algorithm is CONMIN by G. Vanderplaats
-	nvariables = 2; nconstraints = 4
+	nvariables = 2; nconstraints = 3
 	ops=optimize.Conmin(nvariables, nconstraints)
-	start=tmath.Matrix({{0.1},{0.1}}); -- starting point: 10cm for velox, 10 cm for wood and 6cm concrete (fixed)
+	start=tmath.Matrix({{0.081},{0.041}}); -- starting point: 10cm for velox, 10 cm for wood and 6cm concrete (fixed)
 	ops:SetDesign(start)
 	
 -- Run optimization in reverse communication mode
@@ -58,11 +59,21 @@ h_max = l/15
 -- Compute constraints		
 		cons = constraints(x)
 		ops:SetConstraints(cons)
+		
+-- temp printing of solutions each step
+	sol = ops:GetDesign()
+	print("max. u:", u_max) --, " @ l = ", (z-2)*dx)   
+	print("h_Velox        h_Wood", sol:Transpose())
+	print("total hight", h[0]+sol[0]+sol[1])		
 		end
 
 -- Print optimization result
 	sol = ops:GetDesign()
-	print("h_Velox        h_Wood", sol:Transpose())
+	-- print("h_zul", h_max)
+	print("u_zul", u_zul)
 	print("total hight", h[0]+sol[0]+sol[1])
+	print("max. u:", u_max) --, " @ l = ", (z-2)*dx)   
+	print("h_Velox        h_Wood", sol:Transpose())
+
 v=graphics.Visualize(30,30,1000,800, "Frame")
 v:Draw(struct, 1)
