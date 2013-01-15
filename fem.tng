@@ -77,11 +77,17 @@ function createStructure(h, l, moe, mos)
   local ga_b=0 --temporary value for GA_b
   local h_above=0
   local f=1
+  --Schwerpunkt des Verbundquerschnitt
+  local z = tmath.Matrix({{h[0]/2, h[0]+h[1]/2, h[0]+h[1]+h[2]/2}})
+--   print("z", z)
+  local z_tots = (moe[0]*h[0]*z[0] + moe[1]*h[1]*z[1] + moe[2]*h[2]*z[2])/(moe[0]*h[0] + moe[1]*h[1] + moe[2]*h[2])
+--   print("z_tots", z_tots)
+  local z_s = tmath.Matrix({{z[0] - z_tots, z[1] - z_tots, z[2] - z_tots}})
   
   for i=0,2 do
   -- distance between axis of layer and total axis
-    local z = h_tot/2 - h[i]/2 - h_above
-    h_above = h_above+h[i]
+--     local z = h_tot/2 - h[i]/2 - h_above
+--     h_above = h_above+h[i]
     -- stiffness of beam a
     EA_a = EA_a + moe[i]*h[i] 
     -- shear stiffness of beam a (TODO: multiply by 2/3 or sth??)
@@ -89,7 +95,7 @@ function createStructure(h, l, moe, mos)
     -- bending stiffness of beam a
     EI_a = EI_a + moe[i]*h[i]^3/12 
     -- bending stiffness of beam b (Steineranteile)
-    EI_b = EI_b + moe[i]*h[i]*z^2
+    EI_b = EI_b + moe[i]*h[i]*z_s[i]^2
     if i==0 or i==2 then
       f = 2
     else
@@ -98,13 +104,18 @@ function createStructure(h, l, moe, mos)
     ga_b = ga_b + h[i]/(f*mos[i])
   end
 
+--   print("EI_a", EI_a)
+--   print("GA_a", GA_a)
+--   print("EI_b", EI_b)
   --   Ersatz shear stiffness of beam b
   local GA_b = a^2/ga_b
-
+--   print("GA_b", GA_b)
+--   print("a",a)
 --define parameters material with refernce stiffness
   local E_cal = 1e12 -- [N/m²]
   local nu_cal = 0.2
   local G_cal = E_cal/2/(1+nu_cal)
+--   print("G_cal", G_cal)
 
 --add section for beam a
   local ss = struct:AddSection(11, "BEAM3D", 0)
@@ -115,7 +126,7 @@ function createStructure(h, l, moe, mos)
   local I_y = I_z
   local I_x = I_y*2
   local secProp = tmath.Matrix({{A, A_y, A_z, I_x, I_y, I_z}})
-  --print("secPropA", secProp)
+--   print("secPropA", secProp)
   ss:SetData(secProp)
   
 --add section for beam b
