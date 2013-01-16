@@ -197,7 +197,7 @@ function createStructure(h, l, moe, mos)
   --Zeile des Knotens struct:GetNodeIndex(nnr)
   --Maximum einer Matrix: val,z,s = A:MaxCoeff()
   struct:SetDofDisplacements(U) --(verformungen anbringen)
-  return u_max
+  return u_max/2
 end
 
 function dead_load(h, rho)
