@@ -32,7 +32,7 @@ h_max = l/20
 	  -- print("u", u)
 	  -- print("layers", h)
 	  u_zul = l/400
-	  local const=tmath.Matrix({{.08-h[1]}, {.02-h[2]}, {u+0.004-u_zul}}) -- constraints for geometry and maximum deflection
+	  local const=tmath.Matrix({{.08-h[1]}, {.02-h[2]}, {u-u_zul}}) -- constraints for geometry and maximum deflection
 	  return const
 	end
 
