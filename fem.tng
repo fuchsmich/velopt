@@ -12,8 +12,9 @@ function createStructure(h, l, moe, mos)
   
   -- Anzahl der Unterteilungen (Anzahl der Elemente)
   local noe = 30
-  -- distance of nodes 
   local dx = l/noe
+ -- distance of nodes 
+ 
   
 --   local refnnr = 1
   local refnode = tmath.Matrix({{1, 0, 1, 0}})
@@ -190,14 +191,10 @@ function createStructure(h, l, moe, mos)
 --   print("U1", U1)
   local u = U1:GetCols(1)*(-1)
   u_max, z ,s = u:MaxCoeff()
-  -- print("max. u:", u_max) --, " @ l = ", (z-2)*dx)   
-  -- local uo=-U1[{2+15,1}]
-  -- local uu=-U1[{2+15+30,1}]
-  -- print("uo", uo, "uu", uu)
   --Zeile des Knotens struct:GetNodeIndex(nnr)
   --Maximum einer Matrix: val,z,s = A:MaxCoeff()
   struct:SetDofDisplacements(U) --(verformungen anbringen)
-  return u_max/2
+  return u_max
 end
 
 function dead_load(h, rho)

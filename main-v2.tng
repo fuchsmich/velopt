@@ -11,35 +11,36 @@ h = tmath.Matrix({{0.06, 0.2, 0.1}}) -- thickness of part sections (top down) [m
 moe = tmath.Matrix({{1.956e10, 1e9, 1.16e10}}) -- MoE [N/m²]
 mos = tmath.Matrix({{moe[0]/2/(1+0.2), 1.5e7, 9.6e8}}) --MoS [N/m²]
 rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/m³]
-costs = tmath.Matrix({{58, 264, 570}}) -- costs [€/m³]
+costs = tmath.Matrix({{120, 40, 570}}) -- costs [€/m³]
+weight_costs = 1 -- euro/kg
 
 -- createStructure(h, l, moe, mos)
 
 h_max = l/20
 -- This function defines the objective
 	function objective (x)
-	  h[1] = x[0]
-	  h[2] = x[1]
-	  local costs_tot=(h[0]*costs[0]+h[1]*costs[1]+h[2]*costs[2]) -- costs_tot [€/m²]	  
-	  return costs_tot
+	  h = x
+	  local costs_tot = (h[0]*costs[0]+h[1]*costs[1]+h[2]*costs[2]) -- costs_tot [€/m²]	  
+	  local weight_tot = (h[0]*rho[0]+h[1]*rho[1]+h[2]*rho[2]) -- weight_tot [kg/m²]	
+	  if weight_tot*2.5*l > 7500 then -- above a weight of 7,5t, a bigger crane is needed at the construction site . that makes it 10times as expensive :)
+	     weight_costs = 10
+	  end
+	  return costs_tot -- + weight_tot*weight_costs
 	end
 
 -- This function defines the constraints. Note that it returns an array		
 	function constraints (x)
-	  h[1] = x[0]
-	  h[2] = x[1]
+	  h = x
 	  u = createStructure(h, l, moe, mos)
-	  -- print("u", u)
-	  -- print("layers", h)
 	  u_zul = l/400
-	  local const=tmath.Matrix({{.08-h[1]}, {.02-h[2]}, {u+0.004-u_zul}}) -- constraints for geometry and maximum deflection
+	  local const=tmath.Matrix({{.08-h[1]}, {.02-h[2]}, {u+0.004-u_zul}, {0.02-h[0]}}) -- constraints for geometry and maximum deflection
 	  return const
 	end
 
 -- The optimization algorithm is CONMIN by G. Vanderplaats
-	nvariables = 2; nconstraints = 3
+	nvariables = 3; nconstraints = 4
 	ops=optimize.Conmin(nvariables, nconstraints)
-	start=tmath.Matrix({{0.20},{0.10}}); -- starting point: 20cm for velox, 10 cm for wood and 6cm concrete (fixed)
+	start=tmath.Matrix({{0.05}, {0.20}, {0.10}}); -- starting point: 20cm for velox, 10 cm for wood and 6cm concrete (fixed)
 	ops:SetDesign(start)
 	
 -- Run optimization in reverse communication mode
@@ -63,7 +64,7 @@ h_max = l/20
 -- temp printing of solutions each step
 	sol = ops:GetDesign()
 	print("max. u:", u_max)
-	print("h_Velox        h_Wood", sol:Transpose())
+	print("h_concrete      h_Velox        h_Wood", sol:Transpose())
 	-- print("total hight", h[0]+sol[0]+sol[1])		
 		end
 
@@ -71,10 +72,18 @@ h_max = l/20
 	sol = ops:GetDesign()
 	-- print("h_zul", h_max)
 	print("u_zul", u_zul)
-	print("total hight", h[0]+sol[0]+sol[1])
-	print("max. u:", createStructure(tmath.Matrix({{h[0],sol[0],sol[1]}}), l, moe, mos))
+	print("total hight", sol[0]+sol[1]+sol[2])
+	print("deadload", dead_load(sol,rho))
+	print("max. u:", createStructure(sol, l, moe, mos))
 	print("total costs", objective(x), "euro/m²")
-	print("h_Velox        h_Wood", sol:Transpose())
-
-v=graphics.Visualize(30,30,1000,800, "Frame")
+	print("weight", (sol[0]*rho[0]+sol[1]*rho[1]+sol[2]*rho[2]))
+	print("h_concrete       h_Velox        h_Wood", sol:Transpose())
+v = graphics.Visualize(30,30,1000,800, "Frame")
+U2 = struct:GetAllDisplacements()
+v:Vector(struct, U2, 2)
 v:Draw(struct, 1)
+-- tri = struct:Draw()
+-- v = graph.Graph3D("frame")
+-- v:Triangles(tri)
+-- v:Render()
+-- v:Autoscale()
