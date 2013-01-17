@@ -1,0 +1,76 @@
+--[[
+Test example to demonstrate linear statics
+with constraints
+Christian Bucher, CMSD VUT, January 2010
+Update: December 2011
+--]]
+
+-- Create new FE structure
+	structure=fem.Structure("frame")
+
+-- Define node IDs and coordinates
+	nodes = tmath.Matrix({
+		{11, 0, 0, 0},
+		{12, 0, 4, 0},
+		{13, 4, 4, 0},
+		{14, 6, 4, 0},
+		{144, 6, 4, 0},
+		{15, 6, 0, 0},
+		{16, 10, 0, 0}
+	})
+	structure:AddNodes(nodes)
+
+-- Define support conditions and fix reference node 16
+	structure:GetNode(11):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
+	structure:GetNode(15):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
+	structure:GetNode(16):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
+-- Define cross sections
+	b1 = 0.05
+	b2 = 0.03
+	s1 = structure:AddSection(1, "RECT", 0); s1:SetData(tmath.Matrix({{b1, b1}}))
+	s2 = structure:AddSection(2, "RECT", 0); s2:SetData(tmath.Matrix({{b2, b2}}))
+
+-- Define material
+-- 	structure:AddMaterial(8, "LINEAR_ELASTIC", tmath.Matrix({{2.1e11, .3, 7850}}))
+	mm = structure:AddMaterial(8, "LINEAR_ELASTIC")
+	mm:SetData(tmath.Matrix({{2.1e11, .3, 7850}}))
+
+
+-- Define elements
+	structure:AddElements("RECT", 8, 1,
+	    tmath.Matrix({  {1, 11, 12, 16},
+	                    {2, 12, 13, 16},
+	                    {3, 13, 14, 16},
+	                    {4, 144, 15, 16}}))
+	
+-- Find global DOFs and assemble stiffness
+	nd=structure:GlobalDof()
+
+-- Define constraints (here: hinge connection between nodes 14 and 144)
+    c1=tmath.Matrix({{2, 14, 0, 0.5, 144, 0, 1}});
+    structure:AddConstraints(c1);
+    c2=tmath.Matrix({{2, 14, 1, -1, 144, 1, 1},
+		{2, 14, 2, -1, 144, 2, 1}});
+    structure:AddConstraints(c2);
+	
+
+-- Assemble global stiffness matrix including Lagrange multiplier submatrices
+    KK=structure:SparseStiffness();
+
+-- Define a load case
+    F1=structure:GetAllDisplacements()
+    F1[{1,0}] = 1e3
+    F1[{2,1}] = -1e3
+
+-- Bring load case into vector form including zeros for Lagrange multipliers
+    F=structure:ToDofDisplacements(F1)
+
+-- Solve indefinite system of equations for displacements and Lagrange multipliers
+-- U=KK:SolveLU(F)
+    U=KK:SolveLU(F)
+	
+    print("U",U)
+    structure:SetDofDisplacements(U)
+
+    v=graphics.Visualize(30,30,1000,800, "Frame")
+    v:Draw(structure, 1)

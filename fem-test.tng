@@ -1,17 +1,18 @@
 --calls fem.tng for testing
 
-dofile("fem.tng")
+dofile("fem1.tng")
 
 -- main starts here
 l = 7.2 -- length of beam [m]
 h = tmath.Matrix({{0.06, 0.15, 0.118}}) -- thickness of part sections (top down) [m]
 moe = tmath.Matrix({{1.956e10, 1e9, 1.16e10}}) -- MoE [N/m²]
 G_c = moe[0]/2/(1+0.2)
-print("Schubmodul Beton", G_c)
+-- print("Schubmodul Beton", G_c)
 mos = tmath.Matrix({{moe[0]/2/(1+0.2), 1.5e7, 7.2e8}}) --MoS [N/m²]
 rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/m³]
 
-createStructure(h, l, moe, mos)
+u = createStructure(h, l, moe, mos)
 
--- v=graphics.Visualize(30,30,1000,800, "Frame")
--- v:Draw(struct, 1)
+print("u(l/2)", u)
+v=graphics.Visualize(30,30,1000,800, "Frame")
+v:Draw(struct, 1)

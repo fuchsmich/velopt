@@ -1,0 +1,67 @@
+ 	struct=fem.Structure("frame")
+-- Create nodes
+-- 	nodes = tmath.Matrix({
+-- 		{0, 0, 0, 0},
+-- 		{1, 1, 0, 0},
+-- 		{2, 2, 0, 0},
+-- 		{116, 0, 1, 0}
+-- 	})
+	nodes = tmath.Matrix({
+		{0, 0, 0, 0}
+	})
+	n = 12
+	dx = 6/n
+	for i = 1, n do
+	  nodes = nodes:AppendRows(tmath.Matrix({{i, i*dx, 0, 0}}))
+	end
+	nodes = nodes:AppendRows(tmath.Matrix({{116, 0, 1, 0}}))
+	struct:AddNodes(nodes)
+	print(nodes)
+
+-- Define support conditions and fix reference node 116
+-- 	struct:GetNode(0):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
+-- 	struct:GetNode(2):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
+	struct:GetNode(0):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 1}}))
+	struct:GetNode(n):SetAvailDof(tmath.Matrix({{1, 0, 0, 0, 0, 1}}))
+	struct:GetNode(116):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
+	
+	ss = struct:AddSection(1, "BEAM3D", 0)
+	x=0.5       -- Quadratic cross section width/height
+        A = x^2     -- Cross section area (used for axial stiffness)
+        Ay = A*2/3  -- Shear area (used for shear stiffness in y-direction)
+        Az = A*2/3
+	Ix = x^4/6  -- Polar moment of inertial (used for torsion)
+	Iy = Ix/2   -- Cross section moment of inertia about y-Axis (used for bending about y-Axis)
+	Iz = Ix/2
+	
+	ss:SetData(tmath.Matrix({{A, Ay, Az, Ix, Iy, Iz}}))
+	    
+	mm = struct:AddMaterial(8, "LINEAR_ELASTIC")
+	mm:SetData(tmath.Matrix({{2.1e11, .3, 7850}}))
+--define elements	
+-- 	struct:AddElements("BEAM3D", 8, 1, tmath.Matrix({{1, 0, 1, 116},{2, 1, 2, 116}}))
+	elements = tmath.Matrix({{1, 0, 1, 116}})
+	for i = 1, n-1 do
+	  elements = elements:AppendRows(tmath.Matrix({{1+i, i, i+1, 116}}))
+	end
+-- 	print(elements)
+	struct:AddElements("BEAM3D", 8, 1, elements)
+
+-- assemble stiffness matrix and load vector
+	local nd=struct:GlobalDof()
+	local K=struct:SparseStiffness()
+	kk=K:Expand()
+-- 	print("kk", kk)
+	local F1=struct:GetAllDisplacements()
+-- 	F1[{1,1}] = 10e3
+	for i = 1,n-1 do
+	  F1[{i,1}] = 5e3
+	end
+-- 	print(F1)
+	local F=struct:ToDofDisplacements(F1)
+-- solve for displacements
+	U=K:SolveLU(F)
+	U1=struct:ToAllDisplacements(U)
+-- 	u=U1[{1,1}]
+	u=U1[{n/2,1}]
+	print("u", u)
