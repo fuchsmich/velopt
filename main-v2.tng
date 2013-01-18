@@ -4,7 +4,7 @@ group velopt
 --]]
 
 -- include fem.tng file
-dofile("fem.tng")
+dofile("femfunk.tng")
 
 l = 7.2 -- length of beam [m]
 h = tmath.Matrix({{0.06, 0.2, 0.1}}) -- thickness of part sections (top down) [m]
@@ -30,8 +30,8 @@ h_max = l/20
 
 -- This function defines the constraints. Note that it returns an array		
 	function constraints (x)
-	  h = x
-	  u = createStructure(h, l, moe, mos)
+	  h = x:Transpose()
+	  u = calcStructure(h, l, moe, mos, rho)
 	  u_zul = l/400
 	  local const=tmath.Matrix({{.08-h[1]}, {.02-h[2]}, {u+0.004-u_zul}, {0.02-h[0]}}) -- constraints for geometry and maximum deflection
 	  return const
@@ -74,7 +74,7 @@ h_max = l/20
 	print("u_zul", u_zul)
 	print("total hight", sol[0]+sol[1]+sol[2])
 	print("deadload", dead_load(sol,rho))
-	print("max. u:", createStructure(sol, l, moe, mos))
+	print("max. u:", calcStructure(sol:Transpose(), l, moe, mos, rho))
 	print("total costs", objective(x), "euro/m²")
 	print("weight", (sol[0]*rho[0]+sol[1]*rho[1]+sol[2]*rho[2]))
 	print("h_concrete       h_Velox        h_Wood", sol:Transpose())

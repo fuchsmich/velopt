@@ -1,0 +1,8 @@
+m1 = tmath.Matrix({{1,2,3}})
+m2 = tmath.Matrix({{4,5,6}})
+
+print(m1, m2)
+
+print("m1*m2^T", m1 * m2:Transpose())
+
+print(m1*tmath.Identity(3,3)*m2:Transpose())
