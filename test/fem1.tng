@@ -12,6 +12,31 @@
 -- 	costs_wood = costs3:GetValue()
 -- end
 
+-- aus double_pendulum.tng: ===============================
+-- function define_gui()
+--     local world = graph.Graph3D("Double Pendulum")
+--     local L1 = 1.4*L
+--     world:SetRange(-L1, L1, -L1, L1, -L1, L1)
+--     phi1 = gui.NumberInputBox("phi_1", -math.pi, math.pi, 1, "set_phi")
+--     phi2 = gui.NumberInputBox("phi_2", -math.pi, math.pi, 2, "set_phi")
+--     return world
+-- end
+-- 
+-- function set_phi()
+--     q[0] = phi1:GetValue()
+--     q[1] = phi2:GetValue()
+--     p[0] = 0
+--     p[1] = 0
+--     draw_pendulum(q, w)
+--     control.Pause("pause")
+-- end
+-- 
+-- aus double_pendulum.tng: ===============================
+
+function define_gui()
+  l
+end
+
 timo=true
 a=l/4
 l=3
