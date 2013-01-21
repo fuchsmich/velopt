@@ -24,7 +24,7 @@ h_max = l/20
 -- 	  if weight_tot*2.5*l > 7500 then -- above a weight of 7,5t, a bigger crane is needed at the construction site . that makes it 10times as expensive :)
 -- 	     weight_costs = 100
 -- 	  end
-	  return costs_tot + weight_tot*weight_costs
+	  return costs_tot --+ weight_tot*weight_costs
 	end
 
 -- This function defines the constraints. Note that it returns an array		
@@ -40,13 +40,14 @@ h_max = l/20
 -- 	  f_td = 10e6*    --compression timber
 -- 	  local const=tmath.Matrix({{.08-h[1]}, {.02-h[2]}, {u-u_zul}, {0.02-h[0]}}) -- constraints for geometry and maximum deflection
 	  sig_t = math.max(math.abs(sig[{2,0}]),math.abs(sig[{2,1}]))*1.4
-	  sig_c = -sig[{0,0}]*1.4
-	  local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c-f_cd}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
+	  sig_c_c = -sig[{0,0}]*1.4  --top stress in concrete layer
+	  sig_c_t = sig[{0,1}]*1.4   --bottom stress in concrete layer
+	  local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_c_t - f_ctm}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
 	  return const
 	end
 
 -- The optimization algorithm is CONMIN by G. Vanderplaats
-	nvariables = 3; nconstraints = 6
+	nvariables = 3; nconstraints = 7
 	ops=optimize.Conmin(nvariables, nconstraints)
 	start=tmath.Matrix({{0.05}, {0.20}, {0.10}}); -- starting point: 20cm for velox, 10 cm for wood and 6cm concrete (fixed)
 	ops:SetDesign(start)
@@ -71,9 +72,10 @@ h_max = l/20
 		
 -- temp printing of solutions each step
 	  sol = ops:GetDesign()
-	  print("max. u:", u_max)
-	  print("sig_c:", sig_c)
-	  print("sig_t:", sig_t)
+	  print("max. u:", u_max/1e3)
+	  print("sig_c_c:", sig_c_c/1e6)
+	  print("sig_c_t:", sig_c_t/1e6)
+	  print("sig_t:", sig_t/1e6)
 	  print("h_concrete      h_Velox        h_Wood", sol:Transpose())
 	-- print("total hight", h[0]+sol[0]+sol[1])		
 	end
@@ -87,7 +89,7 @@ h_max = l/20
 -- 	print("deadload", dead_load(h, rho) "N/m²")
 	print("max. u:", calcStructure(h, l, moe, mos, rho))
 	print("total costs:", objective(x), "euro/m²")
-	print(rho, h)
+-- 	print(rho, h)
 	print("weight:", dead_load(h, rho), "N/m²")
 	print("h_concrete       h_Velox        h_Wood", sol:Transpose())
 v = graphics.Visualize(30,30,1000,800, "Frame")
