@@ -6,35 +6,12 @@ group velopt
 -- include file for FEM stuff
   dofile("femfunk.tng")
 -- This function defines the objective
-  function define_gui()
-  --   System Vars
-    system_vars = gui.TextBox("System Parameters")
-    l_in = gui.NumberInputBox("Length Beam [m]", 2, 20, l, "getInputVals")
-    q_in = gui.NumberInputBox("variable load [kN/mÂ²]", 0, 100, q/1000, "getInputVals")
-  --   Start Values for cross-sections
-    cross_vars = gui.TextBox("Cross Section Parameters")
-    G_vel_in = gui.NumberInputBox("Modulus of Shear Velox [N/mmÂ²]", 1, 1000, mos[1]/1e6, "getInputVals")
-    rho_vel_in = gui.NumberInputBox("Density of Velox [kg/mÂ³]", 1, 3000, rho[1], "getInputVals")
-    h0_in = gui.NumberInputBox("Thickness Concrete Layer [cm]", 3, 30, h[0]*100, "getInputVals")
-    h1_in = gui.NumberInputBox("Thickness Velox Layer [cm]", 3.5, 30, h[1]*100, "getInputVals")
-    h2_in = gui.NumberInputBox("Thickness Concrete Layer [cm]", 3, 30, h[2]*100, "getInputVals")
-  --   Constraints
-    const_vars = gui.TextBox("Constraint Parameters")
-    u_max_in = gui.NumberInputBox("Max. Deflection (l/xxx) [1/m]", 100, 1000, l/u_zul, "getInputVals")
-    wc_in = gui.NumberInputBox("Weight Costs [Euro/kg]", 0, 1000, weight_costs, "getInputVals")
-    sc_in = gui.NumberInputBox("Optimize Costs [0/1]", 0, 1, switch_costs, "getInputVals")
-    sw_in = gui.NumberInputBox("Optimize Weight [0/1]", 0, 1, switch_weight, "getInputVals")
---  start optimziation   
-    b1 = gui.PushButton("Start", "startOptimizer")
---     control.Pause("pause")
-    result = gui.TextBox("result: ")
-  end
-
   function getInputVals()
     l = l_in:GetValue()
     q = q_in:GetValue()*1000
     mos[1] = G_vel_in:GetValue()*1e6
     rho[1] = rho_vel_in:GetValue()
+    costs[1] = costs_vel_in:GetValue()
     
     h[0] = h0_in:GetValue()/100
     h[1] = h1_in:GetValue()/100
@@ -46,10 +23,46 @@ group velopt
     switch_weight = sw_in:GetValue()
   end
 
+  function define_gui()
+  --   System Vars
+    system_vars = gui.TextBox("System Parameters")
+    l_in = gui.NumberInputBox("Length Beam [m]", 2, 20, l, "getInputVals")
+    q_in = gui.NumberInputBox("variable load [kN/m²]", 0, 100, q/1000, "getInputVals")
+  --   Start Values for cross-sections
+    cross_vars = gui.TextBox("Cross Section Parameters of Velox Layer")
+    G_vel_in = gui.NumberInputBox("Modulus of Shear Velox [N/mm²]", 1, 1000, mos[1]/1e6, "getInputVals")
+    rho_vel_in = gui.NumberInputBox("Density of Velox [kg/m³]", 1, 3000, rho[1], "getInputVals")
+    costs_vel_in = gui.NumberInputBox("Price of Velox [Euro/m³]", 0, 3000, costs[1], "getInputVals")
+  --   Constraints
+    const_vars = gui.TextBox("Constraint Parameters")
+    u_max_in = gui.NumberInputBox("Max. Deflection (l/xxx) [1/m]", 100, 1000, l/u_zul, "getInputVals")
+    wc_in = gui.NumberInputBox("Weight Costs [Euro/kg]", 0, 1000, weight_costs, "getInputVals")
+    sc_in = gui.NumberInputBox("Optimize Costs [0/1]", 0, 1, switch_costs, "getInputVals")
+    sw_in = gui.NumberInputBox("Optimize Weight [0/1]", 0, 1, switch_weight, "getInputVals")
+--  start optimziation   
+    start_vars = gui.TextBox("Starting Parameters")
+    h0_in = gui.NumberInputBox("Thickness Concrete Layer [cm]", 3, 30, h[0]*100, "getInputVals")
+    h1_in = gui.NumberInputBox("Thickness Velox Layer [cm]", 3.5, 30, h[1]*100, "getInputVals")
+    h2_in = gui.NumberInputBox("Thickness Concrete Layer [cm]", 3, 30, h[2]*100, "getInputVals")
+    b1 = gui.PushButton("Start", "startOptimizer")
+--     control.Pause("pause")
+    result_obj = gui.TextBox("==Results== \nOptimized Solution")
+    res_h0 = gui.TextBox("h1: ")
+    res_h1 = gui.TextBox("h2: ")
+    res_h2 = gui.TextBox("h3: ")
+    res_costs = gui.TextBox("total costs: ")
+    res_weight = gui.TextBox("total weight: ")
+    result_cons = gui.TextBox("==Constraints==")
+    con_u_max = gui.TextBox("u_max: ")
+    con_sig_c_c = gui.TextBox("max comp. stress concrete: ")
+--     con_sig_c_t = gui.TextBox("max tens. stress concrete: ")
+    con_sig_t_c = gui.TextBox("max stress timber: ")
+  end
+
   function objective (x)
 --     local h = x
-    local costs_tot = (costs*x)[0] -- costs_tot [â‚¬/mÂ²]	  
-    local weight_tot = (rho*x)[0] -- weight_tot [kg/mÂ²]	
+    local costs_tot = (costs*x)[0] -- costs_tot [¤/m²]	  
+    local weight_tot = (rho*x)[0] -- weight_tot [kg/m²]	
 --     if weight_tot*2.5*l > 7500 then -- above a weight of 7,5t, a bigger crane is needed at the construction site . that makes it 10times as expensive :)
 -- 	weight_costs = 100
 --     end
@@ -59,11 +72,12 @@ group velopt
 -- This function defines the constraints. Note that it returns an array		
   function constraints (x)
     local h = x:Transpose()
-    u_max, sig = calcStructure(h, l, moe, mos, rho)
+    u_max, sig = calcStructure(h, l, moe, mos, rho, q)
     sig_t = math.max(math.abs(sig[{2,0}]),math.abs(sig[{2,1}]))*1.4
     sig_c_c = -sig[{0,0}]*1.4  --top stress in concrete layer
-    sig_c_t = sig[{0,1}]*1.4   --bottom stress in concrete layer
-    local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_c_t - f_ctm}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
+--     sig_c_t = sig[{0,1}]*1.4   --bottom stress in concrete layer
+--     local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_c_t - f_ctm}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
+    local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
     return const
   end
 
@@ -71,15 +85,15 @@ group velopt
 -- Run optimization in reverse communication mode
 -- This is an endless loop which is terminated when
 -- the value "go_on" returned from Compute is equal to zero
-    nvariables = 3; nconstraints = 7
+    nvariables = 3; nconstraints = 6
     ops = optimize.Conmin(nvariables, nconstraints)
-    ops:SetDesign(start:Transpose())
+    ops:SetDesign(start)
     go_on=1
+    sols = start
     while(1) do
   -- Compute one step and check for termination
       go_on=ops:Compute()
       if (go_on==0) then break end
-
   -- Compute objective
       x = ops:GetDesign()
       obj=objective(x)
@@ -90,10 +104,12 @@ group velopt
       ops:SetConstraints(cons)
   -- temp printing of solutions each step
       sol = ops:GetDesign()
+--       print(sols, sol)
+      sols = sols:AppendCols(sol)
       print("max. u:", u_max/1e3, "mm")
-      print("sig_c_c:", sig_c_c/1e6, "N/mmÂ²")
-      print("sig_c_t:", sig_c_t/1e6, "N/mmÂ²")
-      print("sig_t:", sig_t/1e6, "N/mmÂ²")
+      print("sig_c_c:", sig_c_c/1e6, "N/mm²")
+--       print("sig_c_t:", sig_c_t/1e6, "N/mm²")
+      print("sig_t:", sig_t/1e6, "N/mm²")
       print("h_concrete      h_Velox        h_Wood", sol:Transpose())
 	  -- print("total hight", h[0]+sol[0]+sol[1])		
     end
@@ -101,27 +117,38 @@ group velopt
   end
   
   function startOptimizer()
+    --get Values from Input Boxes
     getInputVals()
-  --   start = tmath.Matrix({{0.05}, {0.20}, {0.10}}); -- starting point: 20cm for velox, 10 cm for wood and 6cm concrete (fixed)
-    sol = optimizer(h)
+    --call the optimizer and get solution back
+    sol = optimizer(h:Transpose())
 	  
 
-  -- Print optimization result
+    -- Print optimization result
     h = sol:Transpose()
     -- print("h_zul", h_max)
-    u_max, sig = calcStructure(h, l, moe, mos, rho)
+    u_max, sig = calcStructure(h, l, moe, mos, rho, q)
     print("==Results==")
     print("total height", h__tot(h))
     print("h_concrete       h_Velox        h_Wood", sol:Transpose())
-    print("weight:", dead_load(h, rho)/9.81, "kg/mÂ²")
-    print("total costs:", objective(x), "Euro/mÂ²")
+    print("weight:", dead_load(h, rho)/9.81, "kg/m²")
+    print("total costs:", objective(x), "Euro/m²")
     print("")
     print("==Constraints==")
     print("u_max ", u_max*1000 , " < u_zul ", u_zul*1000)
     print("sig_c,ed ", sig[{0,0}]*1.4/1e6, " < f_cd", f_cd/1e6)
     print("sig_c,ed ", sig[{0,1}]*1.4/1e6, " < f_ctm", f_ctm/1e6)
     print("sig_t,ed ", math.max(math.abs(sig[{2,0}],sig[{2,1}]))*1.4/1e6, " < f_ctm", f_md/1e6)
-    
+    --GUI output
+    res_h0:SetText(string.format("%.2f",h[0]*100).." cm")
+    res_h1:SetText(string.format("%.2f",h[1]*100).." cm")
+    res_h2:SetText(string.format("%.2f",h[2]*100).." cm")
+    res_costs:SetText(string.format("%.2f",objective(x)).." Euro/m²")
+    res_weight:SetText(string.format("%.2f",dead_load(h, rho)/9.81).." kg/m²")
+    con_u_max:SetText(string.format("%.2f",(u_max*1000)).." mm")
+    con_sig_c_c:SetText(string.format("%.2f",sig[{0,0}]*1.4/1e6).." N/mm²")
+--     con_sig_c_t:SetText(string.format("%.2f",sig[{0,1}]*1.4/1e6).." N/mm²")
+    con_sig_t_c:SetText(string.format("%.2f",math.max(math.abs(sig[{2,0}],sig[{2,1}]))*1.4/1e6).." N/mm²")
+
     if v == nil then v = graphics.Visualize(30,30,1000,800, "Frame") end
     v:Draw(struct, 1)
   --   U2 = struct:GetAllDisplacements()
@@ -131,17 +158,29 @@ group velopt
     -- v:Triangles(tri)
     -- v:Render()
     -- v:Autoscale()
+    v2=graph.Graph("Iterations", "Bright")
+    v2:AxisLabels("Step", "Height")
+    local t = tmath.Matrix(sols:Cols())
+    t:SetLinearRows(1,sols:Cols())
+--     print(t, sols)
+    local h3 = sols:GetRows(2)
+    v2:Plot(t,h3, 1, "h3")
+    local h2 = h3+sols:GetRows(1)
+    v2:Plot(t,h2, 2, "h2")
+    local h1 = h2+sols:GetRows(0)
+    v2:Plot(t,h1, 3, "h1 = h_tot")
+
   end
 
 -- =============== Main starts here ==============================
 --default values
 l = 7.2 -- length of beam [m]
-q = 3.0e3 -- variable load [N/mÂ²]
+q = 3.0e3 -- variable load [N/m²]
 h = tmath.Matrix({{0.06, 0.2, 0.1}}) -- thickness of part sections (top down) [m]
-moe = tmath.Matrix({{19560e6, 1000e6, 1160e6}}) -- MoE [N/mÂ²]
-mos = tmath.Matrix({{moe[0]/2/(1+0.2), 15e6, 960e6}}) --MoS [N/mÂ²]
-rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/mÂ³]
-costs = tmath.Matrix({{120, 200, 570}}) -- costs [â‚¬/mÂ³]
+moe = tmath.Matrix({{19560e6, 1000e6, 1160e6}}) -- MoE [N/m²]
+mos = tmath.Matrix({{moe[0]/2/(1+0.2), 15e6, 960e6}}) --MoS [N/m²]
+rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/m³]
+costs = tmath.Matrix({{120, 200, 570}}) -- costs [¤/m³]
 
 -- constraints
 weight_costs = .2 -- euro/kg
@@ -160,3 +199,4 @@ f_md = 24e6*k_mod/gam_M    --bending tension timber
 
 -- The optimization algorithm is CONMIN by G. Vanderplaats
 define_gui()
+getInputVals()
