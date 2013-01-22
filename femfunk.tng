@@ -176,8 +176,10 @@ function getStresses(h, l, moe, mos)
   end
   return sig
 end
+
+
 -- -------------------------------- assemble it all together and calculate the system
-function calcStructure(h, l, moe, mos, rho)
+function calcStructure(h, l, moe, mos, rho, q)
 -- returns maximum deflection u and array of stresses
   
 --   create FEM structure object
@@ -208,7 +210,7 @@ function calcStructure(h, l, moe, mos, rho)
   struct:AddConstraints(createConstraints(noe))
 
 -- apply load
-  local var_load = 3000 --N/m²
+  local var_load = q --N/m²
   local node_load = (dead_load(h, rho) + var_load)*l/noe
   
   local K=struct:SparseStiffness()

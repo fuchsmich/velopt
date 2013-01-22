@@ -1,6 +1,5 @@
 --calls fem.tng for testing
 
-dofile("femfunk.tng")
 
 -- main starts here
 l = 7.2 -- length of beam [m]
@@ -12,11 +11,21 @@ G_c = moe[0]/2/(1+0.2)
 mos = tmath.Matrix({{moe[0]/2/(1+0.2), 1.5e7, 6.9e8}}) --MoS [N/m²]
 -- print(mos)
 rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/m³]
+q = 3000 -- variable load [N/m²]
 
+dofile("femfunk.tng")
 -- createStructure(l, noe)
-u, sig = calcStructure(h, l, moe, mos, rho)
+u, sig = calcStructure(h, l, moe, mos, rho, q)
 
-print("u(l/2)", u)
-print(sig)
+print("u_max", u)
+print("sig: ", sig)
 -- v=graphics.Visualize(30,30,1000,800, "Frame")
 -- v:Draw(struct, 1)
+
+-- korrekte Lösung:
+-- 
+-- u_max	0.011130073811788
+-- sig: Matrix 3x3
+-- -3.4997e+006	-1.2254e+006	-21881	
+-- -166544	124139	3078.89	
+-- -98039.1	2.55454e+006	62218.8	

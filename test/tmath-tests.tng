@@ -9,3 +9,11 @@ print(m1*tmath.Identity(3,3)*m2:Transpose())
 t = tmath.Matrix(500)
 
 t:SetLinearRows(1, 1)
+
+sol = tmath.Matrix({{1},{2},{3}})
+
+print(sol)
+sols = tmath.Matrix({{1},{2},{3}})
+print(sols)
+sols = sols:AppendCols(sol)
+print(sols)
