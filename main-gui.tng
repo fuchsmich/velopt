@@ -42,7 +42,7 @@ group velopt
 --  start optimziation   
     start_vars = gui.TextBox("Starting Parameters")
     h0_in = gui.NumberInputBox("Thickness Concrete Layer [cm]", 3, 30, h[0]*100, "getInputVals")
-    h1_in = gui.NumberInputBox("Thickness Velox Layer [cm]", 3.5, 30, h[1]*100, "getInputVals")
+    h1_in = gui.NumberInputBox("Thickness Velox Layer [cm]", 3, 30, h[1]*100, "getInputVals")
     h2_in = gui.NumberInputBox("Thickness Concrete Layer [cm]", 3, 30, h[2]*100, "getInputVals")
     b1 = gui.PushButton("Start", "startOptimizer")
 --     control.Pause("pause")
@@ -50,13 +50,14 @@ group velopt
     res_h0 = gui.TextBox("h1: ")
     res_h1 = gui.TextBox("h2: ")
     res_h2 = gui.TextBox("h3: ")
+    res_htot = gui.TextBox("total height: ")
     res_costs = gui.TextBox("total costs: ")
     res_weight = gui.TextBox("total weight: ")
     result_cons = gui.TextBox("==Constraints==")
-    con_u_max = gui.TextBox("u_max: ")
-    con_sig_c_c = gui.TextBox("max comp. stress concrete: ")
+    con_u_max = gui.TextBox("u_zul = " .. string.format("%.2f",u_zul*1000) .. " mm > u_max: ")
+    con_sig_c_c = gui.TextBox("f_cd = " .. string.format("%.2f",f_cd/1e6) .." N/mm² > max. comp. stress concrete: ")
 --     con_sig_c_t = gui.TextBox("max tens. stress concrete: ")
-    con_sig_t_c = gui.TextBox("max stress timber: ")
+    con_sig_t_c = gui.TextBox("f_md = " .. string.format("%.2f",f_md/1e6) .." N/mm² > max. stress timber: ")
   end
 
   function objective (x)
@@ -77,7 +78,7 @@ group velopt
     sig_c_c = -sig[{0,0}]*1.4  --top stress in concrete layer
 --     sig_c_t = sig[{0,1}]*1.4   --bottom stress in concrete layer
 --     local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_c_t - f_ctm}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
-    local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
+    local const=tmath.Matrix({{.03-h[0]}, {.03-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
     return const
   end
 
@@ -142,6 +143,7 @@ group velopt
     res_h0:SetText(string.format("%.2f",h[0]*100).." cm")
     res_h1:SetText(string.format("%.2f",h[1]*100).." cm")
     res_h2:SetText(string.format("%.2f",h[2]*100).." cm")
+    res_htot:SetText(string.format("%.2f",(h[0]+h[1]+h[2])*100).." cm")
     res_costs:SetText(string.format("%.2f",objective(x)).." Euro/m²")
     res_weight:SetText(string.format("%.2f",dead_load(h, rho)/9.81).." kg/m²")
     con_u_max:SetText(string.format("%.2f",(u_max*1000)).." mm")
@@ -176,7 +178,7 @@ group velopt
 --default values
 l = 7.2 -- length of beam [m]
 q = 3.0e3 -- variable load [N/m²]
-h = tmath.Matrix({{0.06, 0.2, 0.1}}) -- thickness of part sections (top down) [m]
+h = tmath.Matrix({{0.03, 0.03, 0.03}}) -- thickness of part sections (top down) [m]
 moe = tmath.Matrix({{19560e6, 1000e6, 1160e6}}) -- MoE [N/m²]
 mos = tmath.Matrix({{moe[0]/2/(1+0.2), 15e6, 960e6}}) --MoS [N/m²]
 rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/m³]
@@ -184,7 +186,7 @@ costs = tmath.Matrix({{120, 200, 570}}) -- costs [¤/m³]
 
 -- constraints
 weight_costs = .2 -- euro/kg
-switch_costs = 1 --0/1 turn costs on/off
+switch_costs = 0 --0/1 turn costs on/off
 switch_weight = 1 --0/1 turn weight on/off
 u_zul = l/400
 
