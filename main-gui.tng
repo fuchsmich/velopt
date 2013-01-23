@@ -18,7 +18,7 @@ group velopt
     h[2] = h2_in:GetValue()/100
     
     u_zul = l/u_max_in:GetValue()
-    weight_costs = wc_in:GetValue()
+    -- weight_costs = wc_in:GetValue()
     switch_costs = sc_in:GetValue()
     switch_weight = sw_in:GetValue()
   end
@@ -36,7 +36,8 @@ group velopt
   --   Constraints
     const_vars = gui.TextBox("Constraint Parameters")
     u_max_in = gui.NumberInputBox("Max. Deflection (l/xxx) [1/m]", 100, 1000, l/u_zul, "getInputVals")
-    wc_in = gui.NumberInputBox("Weight Costs [Euro/kg]", 0, 1000, weight_costs, "getInputVals")
+    -- wc_in = gui.NumberInputBox("Weight Costs [Euro/kg]", 0, 1000, weight_costs, "getInputVals")
+    obj_vars = gui.TextBox("Objective Parameters")
     sc_in = gui.NumberInputBox("Optimize Costs [0/1]", 0, 1, switch_costs, "getInputVals")
     sw_in = gui.NumberInputBox("Optimize Weight [0/1]", 0, 1, switch_weight, "getInputVals")
 --  start optimziation   
@@ -67,7 +68,8 @@ group velopt
 --     if weight_tot*2.5*l > 7500 then -- above a weight of 7,5t, a bigger crane is needed at the construction site . that makes it 10times as expensive :)
 -- 	weight_costs = 100
 --     end
-    return switch_costs*costs_tot + switch_weight*weight_tot*weight_costs
+    -- return switch_costs*costs_tot + switch_weight*weight_tot*weight_costs
+    return switch_costs*costs_tot + switch_weight*weight_tot
   end
 
 -- This function defines the constraints. Note that it returns an array		
