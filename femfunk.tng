@@ -6,9 +6,9 @@ beam system for shear analogy method
 
 function h__tot(h)
 --   total height of cross section
-  local i = tmath.Matrix(h:Cols())
+  local i = tmath.Matrix(h:Rows())
   i:SetLinearRows(1,1)
-  return (h*i)[0]
+  return (h:Transpose()*i)[0]
 end
 
 function createNodes(l, noe)
@@ -56,9 +56,9 @@ function setSupports(noe)
 end
 
 function stiffA(h, moe, mos)
-  local eaa = (moe*h:Transpose())[0]
-  local gaa = (mos*h:Transpose()*5/6)[0]
-  local eia = (moe*((h:CW()^3)/12):Transpose())[0]
+  local eaa = (moe:Transpose()*h)[0]
+  local gaa = (mos:Transpose()*h*5/6)[0]
+  local eia = (moe:Transpose()*((h:CW()^3)/12))[0]
   return eaa, gaa, eia
 end
 
@@ -77,13 +77,13 @@ end
 
 function y__s(h, fac)
 --   calculates centerline of gravity due to factor fac (in this case moe)
-  local n = h:Cols()
-  local y = tmath.Matrix(1,n)
+  local n = h:Rows()
+  local y = tmath.Matrix(n,1)
   for i = 0,n - 1 do
     y[i] = h[i]/2
     if i > 0 then y[i] = y[i] + y[i-1] + h[i-1]/2 end
   end
-  y_tots = (fac*(h:CW()*y):Transpose()/(fac*h:Transpose())[0])[0]
+  y_tots = (fac:Transpose()*(h:CW()*y)/(fac:Transpose()*h)[0])[0]
   
   y = y:CW() - y_tots
   return y
@@ -91,14 +91,14 @@ end
 
 function stiffB(h, moe, mos)
   -- returns stiffnesses of beam b
-  local n = h:Cols()
+  local n = h:Rows()
   local y_s = y__s(h, moe)
-  local a = h__tot(h) - h[0]/2 - h[h:Cols()-1]/2
-  local eib = ((moe:CW()*h)*(y_s:CW()^2):Transpose())[0]
+  local a = h__tot(h) - h[0]/2 - h[h:Rows()-1]/2
+  local eib = ((moe:CW()*h):Transpose()*(y_s:CW()^2))[0]
   mos[0] = 2*mos[0]
   mos[n-1] = 2*mos[n-1]
   mos = mos:CW()^(-1)
-  local gab = a^2/(h*mos:Transpose())[0]
+  local gab = a^2/(h:Transpose()*mos)[0]
   return 0, gab, eib
 end
 
@@ -117,7 +117,7 @@ end
 
 function addMaterial(h, moe, mos)
   -- add material
-  local E_cal = 1e10 -- [N/mÂ²]
+  local E_cal = 1e10 -- [N/m²]
   local nu_cal = 0.2
   local G_cal = E_cal/2/(1+nu_cal)
   local calProp = tmath.Matrix({{E_cal, G_cal}})
@@ -133,16 +133,16 @@ function addMaterial(h, moe, mos)
 end
 
 function dead_load(h, rho)
-  local g=9.81 -- [m/sÂ²]
-  return (rho*h:Transpose())[0]*g
+  local g=9.81 -- [m/s²]
+  return (rho:Transpose()*h)[0]*g
 end
 
 function getStresses(h, l, moe, mos)
   -- returns matrix of stresses
-  -- rows = nÂ° of layers
-  -- cols = sig_top, sig_bottom, tau_max
+  -- rows = n° of layers
+  -- cols = sig_top, sig_bottom, tau(z_i=0), tau(z_i=h_i/2), tau(z_i=h_i),
 
-  local nol = h:Cols()
+  local nol = h:Rows()
   local el1 = struct:GetElementIndex(1000+noe/2) -- elements right of l/2
   local el2 = struct:GetElementIndex(2000+noe/2)
   local el3 = struct:GetElementIndex(1000)
@@ -166,13 +166,19 @@ function getStresses(h, l, moe, mos)
   end
 --   print(intforce)
   
-  local sig = tmath.Matrix(nol,3)
+  local sig = tmath.Matrix(nol,5)
+  local t0 = 0
   for i = 0, nol-1 do
     sig_m = M_z_max_A/eia*moe[i]*h[i]/2
     sig_n = M_z_max_B/eib*moe[i]*y_s[i]
     sig[{i,0}] = sig_n - sig_m
     sig[{i,1}] = sig_n + sig_m
-    sig[{i,2}] = Q_max_A*moe[i]/eia*h[i]^2/8 + Q_max_B*moe[i]/eib*y_s[i]*h[i]/2
+    ta = -Q_max_A*moe[i]/eia*(-h[i]^2/8)
+    tb = -Q_max_B*moe[i]/eib*y_s[i]*(h[i]/2 + h[i]/2)
+    sig[{i,2}] = t0
+    sig[{i,3}] = ta + tb/2 + t0
+    sig[{i,4}] = tb + t0
+    t0 = sig[{i,4}]
   end
   return sig
 end
@@ -180,6 +186,7 @@ end
 
 -- -------------------------------- assemble it all together and calculate the system
 function calcStructure(h, l, moe, mos, rho, q)
+
 -- returns maximum deflection u and array of stresses
   
 --   create FEM structure object
@@ -193,7 +200,7 @@ function calcStructure(h, l, moe, mos, rho, q)
   local refnnr = 1
   local refnode = tmath.Matrix({{refnnr, 0, 1, 0}})
   struct:AddNodes(refnode)
-  
+
   setSupports(noe)
 
   addMaterial(h, moe, mos)
@@ -210,7 +217,7 @@ function calcStructure(h, l, moe, mos, rho, q)
   struct:AddConstraints(createConstraints(noe))
 
 -- apply load
-  local var_load = q --N/mÂ²
+  local var_load = q --N/m²
   local node_load = (dead_load(h, rho) + var_load)*l/noe
   
   local K=struct:SparseStiffness()
