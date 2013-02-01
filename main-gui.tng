@@ -63,8 +63,8 @@ group velopt
 
   function objective (x)
 --     local h = x
-    local costs_tot = (costs*x)[0] -- costs_tot [¤/m²]	  
-    local weight_tot = (rho*x)[0] -- weight_tot [kg/m²]	
+    local costs_tot = (costs:Transpose()*x)[0] -- costs_tot [¤/m²]	  
+    local weight_tot = (rho:Transpose()*x)[0] -- weight_tot [kg/m²]	
 --     if weight_tot*2.5*l > 7500 then -- above a weight of 7,5t, a bigger crane is needed at the construction site . that makes it 10times as expensive :)
 -- 	weight_costs = 100
 --     end
@@ -74,13 +74,13 @@ group velopt
 
 -- This function defines the constraints. Note that it returns an array		
   function constraints (x)
-    local h = x:Transpose()
-    u_max, sig = calcStructure(h, l, moe, mos, rho, q)
-    sig_t = math.max(math.abs(sig[{2,0}]),math.abs(sig[{2,1}]))*1.4
-    sig_c_c = -sig[{0,0}]*1.4  --top stress in concrete layer
---     sig_c_t = sig[{0,1}]*1.4   --bottom stress in concrete layer
---     local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_c_t - f_ctm}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
-    local const=tmath.Matrix({{.03-h[0]}, {.03-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
+    local h = x
+    local u_max, sig = calcStructure(h, l, moe, mos, rho, q)
+    local sig_t = math.max(math.abs(sig[{2,0}]),math.abs(sig[{2,1}]))*1.4
+    local sig_c_c = -sig[{0,0}]*1.4  --top stress in concrete layer
+    local sig_c_t = sig[{0,1}]*1.4   --bottom stress in concrete layer
+    local const=tmath.Matrix({{.03-h[0]}, {.05-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_c_t - f_ctm}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
+    -- local const=tmath.Matrix({{.03-h[0]}, {.03-h[1]}, {.03-h[2]}, {u_max-u_zul}, {sig_c_c-f_cd}, {sig_t-f_md}}) -- constraints for geometry and maximum deflection
     return const
   end
 
@@ -88,31 +88,31 @@ group velopt
 -- Run optimization in reverse communication mode
 -- This is an endless loop which is terminated when
 -- the value "go_on" returned from Compute is equal to zero
-    nvariables = 3; nconstraints = 6
-    ops = optimize.Conmin(nvariables, nconstraints)
+    local nvariables = 3; local nconstraints = 7
+    local ops = optimize.Conmin(nvariables, nconstraints)
     ops:SetDesign(start)
-    go_on=1
+    local go_on=1
     sols = start
     while(1) do
   -- Compute one step and check for termination
-      go_on=ops:Compute()
-      if (go_on==0) then break end
+      go_on = ops:Compute()
+      if (go_on == 0) then break end
   -- Compute objective
-      x = ops:GetDesign()
-      obj=objective(x)
+      local x = ops:GetDesign()
+      local obj = objective(x)
       ops:SetObjective(obj);
 
   -- Compute constraints		
-      cons = constraints(x)
+      local cons = constraints(x)
       ops:SetConstraints(cons)
   -- temp printing of solutions each step
-      sol = ops:GetDesign()
---       print(sols, sol)
+      local sol = ops:GetDesign()
+      -- print(sols, sol)
       sols = sols:AppendCols(sol)
-      print("max. u:", u_max/1e3, "mm")
-      print("sig_c_c:", sig_c_c/1e6, "N/mm²")
+      -- print("max. u:", u_max/1e3, "mm")
+      -- print("sig_c_c:", sig_c_c/1e6, "N/mm²")
 --       print("sig_c_t:", sig_c_t/1e6, "N/mm²")
-      print("sig_t:", sig_t/1e6, "N/mm²")
+      -- print("sig_t:", sig_t/1e6, "N/mm²")
       print("h_concrete      h_Velox        h_Wood", sol:Transpose())
 	  -- print("total hight", h[0]+sol[0]+sol[1])		
     end
@@ -123,11 +123,9 @@ group velopt
     --get Values from Input Boxes
     getInputVals()
     --call the optimizer and get solution back
-    sol = optimizer(h:Transpose())
-	  
-
+    local sol = optimizer(h)
     -- Print optimization result
-    h = sol:Transpose()
+    h = sol
     -- print("h_zul", h_max)
     u_max, sig = calcStructure(h, l, moe, mos, rho, q)
     print("==Results==")
@@ -153,8 +151,8 @@ group velopt
 --     con_sig_c_t:SetText(string.format("%.2f",sig[{0,1}]*1.4/1e6).." N/mm²")
     con_sig_t_c:SetText(string.format("%.2f",math.max(math.abs(sig[{2,0}],sig[{2,1}]))*1.4/1e6).." N/mm²")
 
-    if v == nil then v = graphics.Visualize(30,30,1000,800, "Frame") end
-    v:Draw(struct, 1)
+    -- v = graphics.Visualize(30,30,1000,800, "Frame")
+    -- v:Draw(struct, 1)
   --   U2 = struct:GetAllDisplacements()
   --   v:Vector(struct, U2, 2)
     -- tri = struct:Draw()
@@ -162,7 +160,7 @@ group velopt
     -- v:Triangles(tri)
     -- v:Render()
     -- v:Autoscale()
-    v2=graph.Graph("Iterations", "Bright")
+    local v2=graph.Graph("Iterations", "Bright")
     v2:AxisLabels("Step", "Height")
     local t = tmath.Matrix(sols:Cols())
     t:SetLinearRows(1,sols:Cols())
@@ -180,11 +178,11 @@ group velopt
 --default values
 l = 7.2 -- length of beam [m]
 q = 3.0e3 -- variable load [N/m²]
-h = tmath.Matrix({{0.03, 0.03, 0.03}}) -- thickness of part sections (top down) [m]
-moe = tmath.Matrix({{19560e6, 1000e6, 1160e6}}) -- MoE [N/m²]
-mos = tmath.Matrix({{moe[0]/2/(1+0.2), 15e6, 960e6}}) --MoS [N/m²]
-rho = tmath.Matrix({{2272, 750, 470}}) --density [kg/m³]
-costs = tmath.Matrix({{120, 200, 570}}) -- costs [¤/m³]
+h = tmath.Matrix({{0.03}, {0.03}, {0.03}}) -- thickness of part sections (top down) [m]
+moe = tmath.Matrix({{19560e6}, {1000e6}, {1160e6}}) -- MoE [N/m²]
+mos = tmath.Matrix({{moe[0]/2/(1+0.2)}, {15e6}, {960e6}}) --MoS [N/m²]
+rho = tmath.Matrix({{2272}, {750}, {470}}) --density [kg/m³]
+costs = tmath.Matrix({{120}, {200}, {570}}) -- costs [¤/m³]
 
 -- constraints
 weight_costs = .2 -- euro/kg
@@ -203,4 +201,4 @@ f_md = 24e6*k_mod/gam_M    --bending tension timber
 
 -- The optimization algorithm is CONMIN by G. Vanderplaats
 define_gui()
-getInputVals()
+-- optimizer(h)
