@@ -166,7 +166,7 @@ function getStresses(struct, h, l, moe, mos)
   end
 --   print(intforce)
   
-  local sig = tmath.Matrix(nol,5)
+  local sig = tmath.Matrix(nol,6)
   local t0 = 0
   for i = 0, nol-1 do
     sig_m = M_z_max_A/eia*moe[i]*h[i]/2
@@ -176,8 +176,9 @@ function getStresses(struct, h, l, moe, mos)
     ta = -Q_max_A*moe[i]/eia*(-h[i]^2/8)
     tb = -Q_max_B*moe[i]/eib*y_s[i]*(h[i]/2 + h[i]/2)
     sig[{i,2}] = t0
-    sig[{i,3}] = ta + tb/2 + t0
-    sig[{i,4}] = tb + t0
+    sig[{i,3}] = ta + tb/2 +t0
+    sig[{i,4}] = tb +t0
+    sig[{i,5}] = - Q_max_A*moe[i]/eia*((-h[i]/4)^2/2-h[i]^2/8) - Q_max_B*moe[i]/eib*y_s[i]*((-h[i]/4) + h[i]/2) +t0
     t0 = sig[{i,4}]
   end
   return sig
@@ -185,7 +186,7 @@ end
 
 
 -- -------------------------------- assemble it all together and calculate the system
-function calcStructure(h, l, moe, mos, rho, q)
+function calcStructure(h, l, moe, mos, rho, dlf, q, Fx)
 
 -- returns maximum deflection u and array of stresses
   
@@ -216,15 +217,22 @@ function calcStructure(h, l, moe, mos, rho, q)
 --   add constraints between beam a and b
   struct:AddConstraints(createConstraints(noe))
 
--- apply load
+-- apply load to nodes
   local var_load = q --N/m²
-  local node_load = (dead_load(h, rho) + var_load)*l/noe
+  local node_load = (dead_load(h, rho)*dlf + var_load)*l/noe
   
   local K=struct:SparseStiffness()
   local F1=struct:GetAllDisplacements()
   for i = 2, noe+1 do
 	F1[{i,1}] = -node_load
   end
+  
+  -- single loads
+  for i = 0, Fx:Rows()-1 do
+    local nr = math.floor(Fx[{i,0}]*noe + .5)
+	F1[{nr,1}] = F1[{nr,1}] - Fx[{i,1}]
+  end
+  
   local F =  struct:ToDofDisplacements(F1)
 
 -- solve system
