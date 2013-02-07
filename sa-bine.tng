@@ -132,13 +132,25 @@ interface for calculating a Sandwich beam
 
 -- main starts here
 -- default Parameters
-l = 7.2 -- length of beam [m]
-h = tmath.Matrix({{6/1e2}, {15/1e2}, {11.8/1e2}}) -- thickness of part sections (top down) [m]
+--- Geometrie
+l = 6 -- length of beam [m]
+-- Einzelquerschnitte in Abhängigkeit der Gesamtquerschnittshöhe
+-- h_ges = 32
+-- h = tmath.Matrix({{h_ges*0.2/1e2}, {h_ges*0.45/1e2}, {h_ges*0.35/1e2}}) -- thickness of part sections (top down) [m]
+-- Großversuche Kirchmayer
+l = 4.8
+h = {{6.8e-2},{7.5e-2},{5.7e-2}}
+-----------------------------------
+--- Material
 moe = tmath.Matrix({{19560e6}, {1000e6}, {11600e6}}) -- MoE [N/m²]
 mos = tmath.Matrix({{moe[0]/2/(1+0.2)}, {15e6}, {690e6}}) --MoS [N/m²]
 rho = tmath.Matrix({{2400}, {750}, {470}}) --density [kg/m³]
-q = 3000 -- variable load [N/m²]
-u_zul = l/400
+
+--- Lasten
+q = 0 -- variable load [N/m²]
+dl_factor = 0 -- factor for dead load
+F = tmath.Matrix{{0.5, 10e3}} -- Einzellast bei F[{i,1}]*l der Größe F[{i,2}]
+-- u_zul = l/400
 
 -- define_gui()
 
