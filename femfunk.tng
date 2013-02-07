@@ -45,7 +45,7 @@ function createConstraints(noe)
   return c
 end
 
-function setSupports(noe)
+function setSupports(struct, noe)
 --   fix reference node
   struct:GetNode(1):SetAvailDof(tmath.Matrix({{0, 0, 0, 0, 0, 0}}))
 --   define supports
@@ -115,7 +115,7 @@ function secPropB(h, moe, mos, calProp)
   return tmath.Matrix({{A, A_y, A_z, I_x, I_y, I_z}})
 end
 
-function addMaterial(h, moe, mos)
+function addMaterial(struct, h, moe, mos)
   -- add material
   local E_cal = 1e10 -- [N/m²]
   local nu_cal = 0.2
@@ -128,7 +128,7 @@ function addMaterial(h, moe, mos)
   local ss = struct:AddSection(11, "BEAM3D", 0)
   ss:SetData(secPropA(h, moe, mos, calProp))
   
-  ss = struct:AddSection(12, "BEAM3D", 0)
+  local ss = struct:AddSection(12, "BEAM3D", 0)
   ss:SetData(secPropB(h, moe, mos, calProp))
 end
 
@@ -137,7 +137,7 @@ function dead_load(h, rho)
   return (rho:Transpose()*h)[0]*g
 end
 
-function getStresses(h, l, moe, mos)
+function getStresses(struct, h, l, moe, mos)
   -- returns matrix of stresses
   -- rows = n° of layers
   -- cols = sig_top, sig_bottom, tau(z_i=0), tau(z_i=h_i/2), tau(z_i=h_i),
@@ -191,7 +191,7 @@ function calcStructure(h, l, moe, mos, rho, q)
 -- returns maximum deflection u and array of stresses
   
 --   create FEM structure object
-  struct=fem.Structure("shear analogy")
+  local struct = fem.Structure("shear analogy")
   
 -- number of elements (has to be even)
   noe = 30
@@ -202,9 +202,9 @@ function calcStructure(h, l, moe, mos, rho, q)
   local refnode = tmath.Matrix({{refnnr, 0, 1, 0}})
   struct:AddNodes(refnode)
 
-  setSupports(noe)
+  setSupports(struct, noe)
 
-  addMaterial(h, moe, mos)
+  addMaterial(struct, h, moe, mos)
 
 --   add elements to Structure
   local el_a, el_b = createElements(noe, refnnr)
@@ -238,7 +238,7 @@ function calcStructure(h, l, moe, mos, rho, q)
   --nummer der Zeile des Knotens nnr in U1 or F1 struct:GetNodeIndex(nnr) 
   --Maximum einer Matrix: val,z,s = A:MaxCoeff()
   struct:SetDofDisplacements(U) -- apply deformations to structure (drawing)
-  return u_max, getStresses(h, l, moe, mos)
+  return u_max, getStresses(struct, h, l, moe, mos)
 end 
 
 
