@@ -68,8 +68,8 @@ interface for calculating a Sandwich beam
   end
   
   function printResults(u, sig)
-    print("u_max", u)
-    print("sig: ", sig)
+    print(string.format("u_max =  %.2f mm", u*1000))
+    print("sig_o   sig_u  tau_o  tau_z0   tau_u", sig/1e6)
   end
   
   function drawResults(u, sig)
@@ -94,8 +94,8 @@ interface for calculating a Sandwich beam
 --     Schubspannungen
     v2=graph.Graph("Shear Stress", "Bright")
     v2:AxisLabels("stress [N/mm²]", "z_s [mm]")
-    local z = tmath.Matrix(3)
-    local tauz = tmath.Matrix(3)
+    local z = tmath.Matrix(4)
+    local tauz = tmath.Matrix(4)
     local n = 10
     local zz = tmath.Matrix(n)
     local tauzz = tmath.Matrix(n)
@@ -104,6 +104,8 @@ interface for calculating a Sandwich beam
 	z[j] = (z_s[i] - (j-1)*h[i]/2)*1000
 	tauz[j] = sig[{i,j+2}]/1e6
       end
+      z[3] = (z_s[i] + h[i]/4)*1000
+      tauz[3] = sig[{i,5}]/1e6
       v2:Plot(tauz,z, 1, "tau["..(i+1).."]")
 --       print(tauz, z)
 -- 	adz^2 + bdz +c = tauz

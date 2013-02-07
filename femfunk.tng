@@ -166,7 +166,7 @@ function getStresses(h, l, moe, mos)
   end
 --   print(intforce)
   
-  local sig = tmath.Matrix(nol,5)
+  local sig = tmath.Matrix(nol,6)
   local t0 = 0
   for i = 0, nol-1 do
     sig_m = M_z_max_A/eia*moe[i]*h[i]/2
@@ -176,8 +176,9 @@ function getStresses(h, l, moe, mos)
     ta = -Q_max_A*moe[i]/eia*(-h[i]^2/8)
     tb = -Q_max_B*moe[i]/eib*y_s[i]*(h[i]/2 + h[i]/2)
     sig[{i,2}] = t0
-    sig[{i,3}] = ta + tb/2 + t0
-    sig[{i,4}] = tb + t0
+    sig[{i,3}] = ta + tb/2 +t0
+    sig[{i,4}] = tb +t0
+    sig[{i,5}] = - Q_max_A*moe[i]/eia*((-h[i]/4)^2/2-h[i]^2/8) - Q_max_B*moe[i]/eib*y_s[i]*((-h[i]/4) + h[i]/2) +t0
     t0 = sig[{i,4}]
   end
   return sig
