@@ -73,7 +73,8 @@ interface for calculating a Sandwich beam
   end
   
   function drawResults(u, sig)
-    local z_s = y__s(h, moe)*(-1)
+    local h = hb:GetCols(0)
+    local z_s = y__s(hb, moe)*(-1)
     local z = tmath.Matrix(4)
     local sigz = tmath.Matrix(4)
 --     Normalspannungen
@@ -125,21 +126,23 @@ interface for calculating a Sandwich beam
   end
   
   function startCalculation()
-      local u, sig = calcStructure(h, l, moe, mos, rho, dl_factor, q, Fx)
+      local u, sig = calcStructure(hb, l, moe, mos, rho, dl_factor, q, Fx)
       printResults(u, sig)
       drawResults(u, sig)
   end
 
--- main starts here
+-- main starts here ===============================================================
 -- default Parameters
 --- Geometrie
-l = 6 -- length of beam [m]
+-- l = 6 -- length of beam [m]
+-- b = 1 -- width of beam
 -- Einzelquerschnitte in Abhängigkeit der Gesamtquerschnittshöhe
 -- h_ges = 32
--- h = tmath.Matrix({{h_ges*0.2/1e2}, {h_ges*0.45/1e2}, {h_ges*0.35/1e2}}) -- thickness of part sections (top down) [m]
+-- h = tmath.Matrix({{h_ges*0.2/1e2, b}, {h_ges*0.45/1e2, b}, {h_ges*0.35/1e2, b}}) -- thickness of part sections (top down) [m]
 -- Großversuche Kirchmayer
 l = 4.8
-h = tmath.Matrix({{6.8e-2}, {7.5e-2}, {5.7e-2}})
+b = 0.42
+hb = tmath.Matrix({{6.8e-2, b}, {7.5e-2, b}, {5.7e-2, b}})
 -- Ergebnisse
 --- Material
 moe = tmath.Matrix({{19560e6}, {1000e6}, {11600e6}}) -- MoE [N/m²]
@@ -149,7 +152,7 @@ rho = tmath.Matrix({{2400}, {750}, {470}}) --density [kg/m³]
 --- Lasten
 q = 0 -- variable load [N/m²]
 dl_factor = 0 -- factor for dead load
-Fx = tmath.Matrix({{0.5, 10e3}}) -- Einzellast bei F[{i,1}]*l der Größe F[{i,2}]
+Fx = tmath.Matrix({{0.5, 10e3}}) -- single load at F[{i,0}]*l of magnitude F[{i,1}]
 -- u_zul = l/400
 
 -- define_gui()

@@ -11,6 +11,10 @@ function h__tot(h)
   return (h:Transpose()*i)[0]
 end
 
+function A(hb)
+  return hb:GetCols(0):CW()*hb:GetCols(1)
+end
+
 function createNodes(l, noe)
   local dx = l/noe
   local dy = l/5
@@ -55,57 +59,61 @@ function setSupports(struct, noe)
   struct:GetNode(2000+noe):SetAvailDof(tmath.Matrix({{1, 0, 0, 0, 0, 1}}))
 end
 
-function stiffA(h, moe, mos)
-  local eaa = (moe:Transpose()*h)[0]
-  local gaa = (mos:Transpose()*h*5/6)[0]
-  local eia = (moe:Transpose()*((h:CW()^3)/12))[0]
+function stiffA(hb, moe, mos)
+  local eaa = (moe:Transpose()*A(hb))[0]
+  local gaa = (mos:Transpose()*A(hb)*5/6)[0]
+  local h = hb:GetCols(0)
+  local b = hb:GetCols(1)
+  local eia = ((moe:CW()*b):Transpose()*((h:CW()^3)/12))[0]
   return eaa, gaa, eia
 end
 
-function secPropA(h, moe, mos, calProp)
+function secPropA(hb, moe, mos, calProp)
 --   calculates properties for section A
-  local eaa, gaa, eia = stiffA(h, moe, mos)
-  local A = eaa/calProp[0]*0.01  --can be 0
+  local eaa, gaa, eia = stiffA(hb, moe, mos)
+  local A_x = eaa/calProp[0]*0.01  --can be 0
   local A_y = gaa/calProp[1] --can be oo
   local A_z = A_y
   local I_z = eia/calProp[0] --important part
   local I_y = I_z --??
   local I_x = I_y*2 --??
-  return tmath.Matrix({{A, A_y, A_z, I_x, I_y, I_z}})
+  return tmath.Matrix({{A_x, A_y, A_z, I_x, I_y, I_z}})
 end
 
 
-function y__s(h, fac)
+function y__s(hb, fac)
 --   calculates centerline of gravity due to factor fac (in this case moe)
-  local n = h:Rows()
+  local n = hb:Rows()
+  local h = hb:GetCols(0)
   local y = tmath.Matrix(n,1)
   for i = 0,n - 1 do
     y[i] = h[i]/2
     if i > 0 then y[i] = y[i] + y[i-1] + h[i-1]/2 end
   end
-  y_tots = (fac:Transpose()*(h:CW()*y)/(fac:Transpose()*h)[0])[0]
+  y_tots = (fac:Transpose()*(A(hb):CW()*y)/(fac:Transpose()*A(hb))[0])[0]
   
   y = y:CW() - y_tots
   return y
 end
 
-function stiffB(h, moe, mos)
+function stiffB(hb, moe, mos)
   -- returns stiffnesses of beam b
-  local n = h:Rows()
-  local y_s = y__s(h, moe)
-  local a = h__tot(h) - h[0]/2 - h[h:Rows()-1]/2
-  local eib = ((moe:CW()*h):Transpose()*(y_s:CW()^2))[0]
+  local n = hb:Rows()
+  local h = hb:GetCols(0)
+  local y_s = y__s(hb, moe)
+  local a = h__tot(h) - h[0]/2 - h[n-1]/2
+  local eib = ((moe:CW()*A(hb)):Transpose()*(y_s:CW()^2))[0]
   mos[0] = 2*mos[0]
   mos[n-1] = 2*mos[n-1]
   mos = mos:CW()^(-1)
-  local gab = a^2/(h:Transpose()*mos)[0]
+  local gab = a^2/(A(hb):Transpose()*mos)[0]
   return 0, gab, eib
 end
 
-function secPropB(h, moe, mos, calProp)
+function secPropB(hb, moe, mos, calProp)
 --   calculates properties for section B
   
-  local eab, gab, eib = stiffB(h, moe, mos)
+  local eab, gab, eib = stiffB(hb, moe, mos)
   local A_y = gab/calProp[1]
   local A = A_y  --can be 0
   local A_z = A_y
@@ -115,7 +123,7 @@ function secPropB(h, moe, mos, calProp)
   return tmath.Matrix({{A, A_y, A_z, I_x, I_y, I_z}})
 end
 
-function addMaterial(struct, h, moe, mos)
+function addMaterial(struct, hb, moe, mos)
   -- add material
   local E_cal = 1e10 -- [N/m²]
   local nu_cal = 0.2
@@ -126,23 +134,25 @@ function addMaterial(struct, h, moe, mos)
   mm:SetData(tmath.Matrix({{E_cal, nu_cal, 3850}}))
 
   local ss = struct:AddSection(11, "BEAM3D", 0)
-  ss:SetData(secPropA(h, moe, mos, calProp))
+  ss:SetData(secPropA(hb, moe, mos, calProp))
   
   local ss = struct:AddSection(12, "BEAM3D", 0)
-  ss:SetData(secPropB(h, moe, mos, calProp))
+  ss:SetData(secPropB(hb, moe, mos, calProp))
 end
 
-function dead_load(h, rho)
+function dead_load(hb, rho)
   local g=9.81 -- [m/s²]
-  return (rho:Transpose()*h)[0]*g
+  return (rho:Transpose()*A(hb))[0]*g
 end
 
-function getStresses(struct, h, l, moe, mos)
+function getStresses(struct, hb, l, moe, mos)
   -- returns matrix of stresses
   -- rows = n° of layers
   -- cols = sig_top, sig_bottom, tau(z_i=0), tau(z_i=h_i/2), tau(z_i=h_i),
 
-  local nol = h:Rows()
+  local nol = hb:Rows()
+  local h = hb:GetCols(0)
+  
   local el1 = struct:GetElementIndex(1000+noe/2) -- elements right of l/2
   local el2 = struct:GetElementIndex(2000+noe/2)
   local el3 = struct:GetElementIndex(1000)
@@ -156,14 +166,14 @@ function getStresses(struct, h, l, moe, mos)
 --   print(M_z_max_A, M_z_max_B, Q_max_A, Q_max_B)
   
    --internal forces N, M, Q
-  local intforce = tmath.Matrix(nol,3)
-  local eaa, gaa, eia = stiffA(h, moe, mos)
-  local eab, gab, eib = stiffB(h, moe, mos)
-  local y_s = y__s(h, moe)
-  for i = 0,2 do
-    intforce[{i,0}] = M_z_max_B*moe[i]*h[i]*y_s[i]/eib --normal force in layer i
-    intforce[{i,1}] = M_z_max_A*moe[i]*(h[i]^3/12)/eia --bending moment  in layer i
-  end
+  -- local intforce = tmath.Matrix(nol,3)
+  local eaa, gaa, eia = stiffA(hb, moe, mos)
+  local eab, gab, eib = stiffB(hb, moe, mos)
+  local y_s = y__s(hb, moe)
+  -- for i = 0, nol-1 do
+    -- intforce[{i,0}] = M_z_max_B*moe[i]*h[i]*y_s[i]/eib --normal force in layer i
+    -- intforce[{i,1}] = M_z_max_A*moe[i]*(h[i]^3/12)/eia --bending moment  in layer i
+  -- end
 --   print(intforce)
   
   local sig = tmath.Matrix(nol,6)
@@ -178,6 +188,7 @@ function getStresses(struct, h, l, moe, mos)
     sig[{i,2}] = t0
     sig[{i,3}] = ta + tb/2 +t0
     sig[{i,4}] = tb +t0
+	-- Kontrollwert für Parabel:
     sig[{i,5}] = - Q_max_A*moe[i]/eia*((-h[i]/4)^2/2-h[i]^2/8) - Q_max_B*moe[i]/eib*y_s[i]*((-h[i]/4) + h[i]/2) +t0
     t0 = sig[{i,4}]
   end
@@ -186,7 +197,7 @@ end
 
 
 -- -------------------------------- assemble it all together and calculate the system
-function calcStructure(h, l, moe, mos, rho, dlf, q, Fx)
+function calcStructure(hb, l, moe, mos, rho, dlf, q, Fx)
 
 -- returns maximum deflection u and array of stresses
   
@@ -204,7 +215,7 @@ function calcStructure(h, l, moe, mos, rho, dlf, q, Fx)
 
   setSupports(struct, noe)
 
-  addMaterial(struct, h, moe, mos)
+  addMaterial(struct, hb, moe, mos)
 
 --   add elements to Structure
   local el_a, el_b = createElements(noe, refnnr)
@@ -219,7 +230,7 @@ function calcStructure(h, l, moe, mos, rho, dlf, q, Fx)
 
 -- apply load to nodes
   local var_load = q --N/m²
-  local node_load = (dead_load(h, rho)*dlf + var_load)*l/noe
+  local node_load = (dead_load(hb, rho)*dlf + var_load)*l/noe
   
   local K=struct:SparseStiffness()
   local F1=struct:GetAllDisplacements()
@@ -245,7 +256,7 @@ function calcStructure(h, l, moe, mos, rho, dlf, q, Fx)
   --nummer der Zeile des Knotens nnr in U1 or F1 struct:GetNodeIndex(nnr) 
   --Maximum einer Matrix: val,z,s = A:MaxCoeff()
   struct:SetDofDisplacements(U) -- apply deformations to structure (drawing)
-  return u_max, getStresses(struct, h, l, moe, mos)
+  return u_max, getStresses(struct, hb, l, moe, mos)
 end 
 
 
